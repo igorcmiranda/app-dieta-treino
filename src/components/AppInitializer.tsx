@@ -12,11 +12,13 @@ export function AppInitializer({ children }: AppInitializerProps) {
   const { users } = useUsers();
 
   useEffect(() => {
-    // Aguardar os usuários serem carregados
-    if (users.length > 0) {
+    // Aguardar um pouco para garantir que o localStorage foi carregado
+    const timer = setTimeout(() => {
       setIsInitialized(true);
-    }
-  }, [users]);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!isInitialized) {
     return (
