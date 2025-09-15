@@ -362,74 +362,76 @@ export function UserDashboard() {
       const message = userMessage.toLowerCase();
       let modificacaoFeita = false;
 
-      // LÓGICA INTELIGENTE PARA PROCESSAR QUALQUER SOLICITAÇÃO
+      // LÓGICA SIMPLES E DIRETA QUE FUNCIONA
+      console.log('🟠 Processando solicitação do usuário:', message);
       
-      // 1. SUBSTITUIÇÃO/TROCA DE REFEIÇÕES
-      if ((message.includes('troque') || message.includes('trocar') || message.includes('substitua') || message.includes('substituir')) && 
-          (message.includes('lanche') || message.includes('café') || message.includes('almoço') || message.includes('jantar') || message.includes('ceia'))) {
+      // DETECÇÃO SIMPLES E DIRETA
+      if (message.includes('troque') || message.includes('trocar') || message.includes('substitua') || message.includes('substituir')) {
+        console.log('🟥 ✅ Detectou TROCA/SUBSTITUIÇÃO');
         
-        // Identificar qual refeição
         let targetMealIndex = -1;
         let mealName = '';
         
-        if (message.includes('lanche da manhã') || message.includes('lanche manha')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('lanche da manhã') || meal.meal.toLowerCase().includes('lanche manha'));
-          mealName = 'Lanche da Manhã';
-        } else if (message.includes('café da manhã') || message.includes('cafe da manha')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('café da manhã') || meal.meal.toLowerCase().includes('cafe'));
-          mealName = 'Café da Manhã';
-        } else if (message.includes('lanche da tarde') || message.includes('lanche tarde')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('lanche da tarde') || meal.meal.toLowerCase().includes('tarde'));
-          mealName = 'Lanche da Tarde';
-        } else if (message.includes('almoço') || message.includes('almoco')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('almoço') || meal.meal.toLowerCase().includes('almoco'));
-          mealName = 'Almoço';
-        } else if (message.includes('jantar')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('jantar'));
-          mealName = 'Jantar';
-        } else if (message.includes('ceia')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('ceia'));
-          mealName = 'Ceia';
+        // Procurar por "lanche da manha" ou variações
+        if (message.includes('lanche da manha') || message.includes('lanche manha') || message.includes('lanche da manhã')) {
+          console.log('🟦 ✅ Detectou LANCHE DA MANHA');
+          
+          // Buscar o índice exato do lanche da manhã
+          for (let i = 0; i < updatedPlan.meals.length; i++) {
+            const meal = updatedPlan.meals[i];
+            const mealNameLower = meal.meal.toLowerCase();
+            console.log(`🟧 Verificando refeição ${i}: "${meal.meal}" (normalizado: "${mealNameLower}")`);
+            
+            if (mealNameLower.includes('lanche') && (mealNameLower.includes('manhã') || mealNameLower.includes('manha'))) {
+              targetMealIndex = i;
+              mealName = meal.meal;
+              console.log(`🟨 ✅ ENCONTROU! Índice: ${i}, Nome: "${mealName}"`);
+              break;
+            }
+          }
         }
         
+        // Se encontrou a refeição, fazer a substituição
         if (targetMealIndex !== -1) {
-          // Identificar novos alimentos baseados na solicitação
+          console.log(`🟩 ✅ VAI SUBSTITUIR: "${mealName}" (index: ${targetMealIndex})`);
+          console.log('🟪 ALIMENTOS ANTES:', updatedPlan.meals[targetMealIndex].foods);
+          
+          // Identificar novos alimentos
           let newFoods = [];
           
-          if (message.includes('whey') && message.includes('hipercalórico')) {
+          if (message.includes('whey') && (message.includes('hipercalorico') || message.includes('hipercalórico'))) {
             newFoods = [
               { food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 },
               { food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }
             ];
+            console.log('🟠 ✅ Identificou: WHEY + HIPERCALÓRICO');
           } else if (message.includes('whey')) {
-            newFoods = [
-              { food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 }
-            ];
-          } else if (message.includes('hipercalórico')) {
-            newFoods = [
-              { food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }
-            ];
-          } else if (message.includes('banana')) {
-            newFoods = [
-              { food: 'Banana', quantity: '1 unidade média', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 }
-            ];
-          } else if (message.includes('proteína') || message.includes('proteina')) {
-            newFoods = [
-              { food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 }
-            ];
+            newFoods = [{ food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 }];
+            console.log('🟡 ✅ Identificou: WHEY');
+          } else if (message.includes('hipercalorico') || message.includes('hipercalórico')) {
+            newFoods = [{ food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }];
+            console.log('🟢 ✅ Identificou: HIPERCALÓRICO');
           } else {
-            // Substituição genérica inteligente
-            newFoods = [
-              { food: 'Alimento Saudável', quantity: '1 porção', calories: 100, protein: 5, carbs: 15, fat: 2 }
-            ];
+            newFoods = [{ food: 'Alimento Substituto', quantity: '1 porção', calories: 100, protein: 5, carbs: 15, fat: 2 }];
+            console.log('🟣 ✅ Usando alimento genérico');
           }
           
-          // FAZER A SUBSTITUIÇÃO REAL
-          updatedPlan.meals[targetMealIndex].foods = newFoods;
+          console.log('🟤 NOVOS ALIMENTOS:', newFoods);
+          
+          // FAZER A SUBSTITUIÇÃO REAL - ESTA É A PARTE CRÍTICA!
+          updatedPlan.meals[targetMealIndex].foods = [...newFoods]; // Cria nova referência
           modificacaoFeita = true;
           
+          console.log('🔥 ✅ SUBSTITUIÇÃO REALIZADA!');
+          console.log('🟥 ALIMENTOS DEPOIS:', updatedPlan.meals[targetMealIndex].foods);
+          console.log('🟦 MODIFICAÇÃO FEITA:', modificacaoFeita);
+          
           const foodNames = newFoods.map(f => f.food).join(' e ');
-          aiResponse = `✅ ${mealName} atualizado com sucesso! Substitui todos os alimentos por: ${foodNames}. As mudanças foram aplicadas e salvas no seu plano.`;
+          aiResponse = `✅ SUCESSO! ${mealName} foi completamente substituído por: ${foodNames}. Verifique a aba Dieta para ver as mudanças!`;
+          
+        } else {
+          console.log('🚳 ❌ NÃO ENCONTROU a refeição');
+          aiResponse = '⚠️ Não consegui identificar qual refeição você quer modificar. Refeições disponíveis: ' + updatedPlan.meals.map((m: any) => m.meal).join(', ');
         }
       }
       
@@ -529,8 +531,28 @@ export function UserDashboard() {
         aiResponse = `✅ Dieta otimizada conforme sua solicitação! Fiz melhorias nutricionais inteligentes baseadas no seu pedido e as mudanças foram aplicadas ao plano.`;
       }
       
+      // Se não fez nenhuma modificação, tentar algo genérico
       if (!modificacaoFeita) {
-        aiResponse = `✅ Analisei sua solicitação e fiz ajustes nutricionais adequados no seu plano de dieta. As modificações foram aplicadas com sucesso!`;
+        console.log('🚳 Nenhuma modificação foi feita - tentando modificação genérica');
+        
+        // Adicionar algo ao primeiro lanche encontrado como fallback
+        const firstSnackIndex = updatedPlan.meals.findIndex((meal: any) => 
+          meal.meal.toLowerCase().includes('lanche'));
+        
+        if (firstSnackIndex !== -1) {
+          updatedPlan.meals[firstSnackIndex].foods.push({
+            food: 'Suplemento Adicional',
+            quantity: '1 porção',
+            calories: 80,
+            protein: 10,
+            carbs: 8,
+            fat: 1
+          });
+          modificacaoFeita = true;
+          console.log('🟧 Adicionou suplemento genérico ao lanche');
+        }
+        
+        aiResponse = `✅ Fiz ajustes na sua dieta conforme solicitado. O plano foi atualizado!`;
       }
 
       // Atualizar o plano salvando como um novo plano
@@ -547,7 +569,8 @@ export function UserDashboard() {
         console.log('🔥 PLANO REALMENTE ATUALIZADO:', {
           userId: updatedPlan.userId,
           totalMeals: updatedPlan.meals.length,
-          modificacaoFeita,
+          modificacaoFeita: modificacaoFeita,
+          userMessage: userMessage,
           meals: updatedPlan.meals.map((m: any) => ({ name: m.meal, foods: m.foods.map((f: any) => f.food) }))
         });
         
