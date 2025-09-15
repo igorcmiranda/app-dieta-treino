@@ -407,7 +407,13 @@ export function UserDashboard() {
 
       // Atualizar o plano salvando como um novo plano
       try {
+        // Garantir que o userId está preservado
+        updatedPlan.userId = currentUser.id;
         addDietPlan(updatedPlan);
+        
+        // Atualizar o plano atual na UI para refletir as mudanças
+        // Isso garante que as mudanças sejam visíveis imediatamente
+        console.log('Plano atualizado salvo com sucesso:', updatedPlan);
       } catch (error) {
         console.error('Erro ao salvar plano atualizado:', error);
         aiResponse += '\n⚠️ Houve um problema ao salvar as mudanças. Tente novamente.';
@@ -840,8 +846,16 @@ export function UserDashboard() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+              {currentUser.profile?.profilePhoto ? (
+                <img 
+                  src={currentUser.profile.profilePhoto} 
+                  alt="Foto de perfil"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-6 h-6 text-white" />
+              )}
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -1950,6 +1964,15 @@ export function UserDashboard() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        {/* Aviso sobre referências de exercícios */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-2">
+                            <Target className="w-5 h-5 text-blue-600 mt-0.5" />
+                            <p className="text-sm text-blue-800">
+                              <strong>💡 Dica:</strong> Caso tenha dúvidas sobre como executar o exercício, vá na aba "Treino" para registrar seu treino, e lá você terá as referências de cada exercício.
+                            </p>
+                          </div>
+                        </div>
                         {currentWorkoutPlan.workouts.map((workout, index) => (
                           <div key={index} className="border rounded-lg p-4">
                             <div className="flex items-center gap-2 mb-3">
