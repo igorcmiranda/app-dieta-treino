@@ -316,7 +316,17 @@ export function UserDashboard() {
 
   // Função para processar chat de edição de dieta
   const processDietChat = async () => {
-    if (!dietChatMessage.trim() || !currentDietPlan || !currentUser) return;
+    if (!dietChatMessage.trim() || !currentUser) return;
+    
+    // Se não há plano de dieta, informar o usuário
+    if (!currentDietPlan) {
+      setDietChatHistory(prev => [...prev, { 
+        user: dietChatMessage.trim(), 
+        ai: '⚠️ Você precisa gerar um plano de dieta primeiro. Vá para a aba Dashboard e clique em "Gerar Planos com IA".'
+      }]);
+      setDietChatMessage('');
+      return;
+    }
 
     // Verificar se usuário tem assinatura ativa
     if (!hasActiveSubscription(currentUser)) {
@@ -886,7 +896,14 @@ export function UserDashboard() {
             </div>
           </div>
           <Button 
-            onClick={logout}
+            onClick={() => {
+              console.log('🚪 Fazendo logout...');
+              logout();
+              // Forçar redirecionamento para página de login
+              setTimeout(() => {
+                window.location.reload();
+              }, 100);
+            }}
             variant="outline"
             className="flex items-center gap-2"
           >
@@ -1319,7 +1336,7 @@ export function UserDashboard() {
                                 }));
                                 console.log('✅ Estado atualizado newMeal.time:', timeValue);
                               }}
-                              placeholder="Ex: 14:30"
+                              placeholder="14:30"
                               required
                             />
                           </div>
