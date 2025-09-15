@@ -5,8 +5,12 @@ export interface User {
   name: string;
   email: string;
   password: string;
+  phone?: string;
+  cpf?: string;
   isAdmin: boolean;
   profile?: UserProfile;
+  subscription?: UserSubscription;
+  emailVerified: boolean;
   createdAt: Date;
 }
 
@@ -18,6 +22,31 @@ export interface UserProfile {
   activityLevel: 'sedentario' | 'leve' | 'moderado' | 'intenso' | 'muito-intenso';
   goal: 'engordar' | 'emagrecer' | 'manter-peso-perder-gordura';
   preferredMuscleGroups: string[];
+}
+
+export interface UserSubscription {
+  plan: 'starter' | 'standard' | 'premium';
+  status: 'active' | 'inactive' | 'cancelled';
+  startDate: Date;
+  endDate: Date;
+  canDowngrade: boolean;
+  downgradableDate?: Date; // Data quando pode fazer downgrade
+  dietsUsedThisMonth: number;
+  workoutsUsedThisMonth: number;
+}
+
+export interface SubscriptionPlan {
+  id: 'starter' | 'standard' | 'premium';
+  name: string;
+  price: number;
+  features: {
+    dietsPerMonth: number | 'unlimited';
+    workoutsPerMonth: number;
+    canChangeDiet: boolean;
+    supplementConsultation: boolean;
+    minimumMonths?: number;
+  };
+  description: string[];
 }
 
 export interface FoodEntry {
@@ -115,4 +144,13 @@ export interface AIResponse {
   success: boolean;
   data?: any;
   error?: string;
+}
+
+export interface PaymentData {
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
+  cardName: string;
+  cpf: string;
+  plan: 'starter' | 'standard' | 'premium';
 }
