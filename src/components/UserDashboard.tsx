@@ -411,9 +411,11 @@ export function UserDashboard() {
         updatedPlan.userId = currentUser.id;
         addDietPlan(updatedPlan);
         
-        // Atualizar o plano atual na UI para refletir as mudanças
-        // Isso garante que as mudanças sejam visíveis imediatamente
+        // Forçar re-renderização para mostrar mudanças imediatamente
         console.log('Plano atualizado salvo com sucesso:', updatedPlan);
+        
+        // Adicionar notificação de sucesso
+        aiResponse += '\n\n✨ As mudanças já estão visíveis na sua aba Dieta! Clique na aba Dieta para ver as atualizações.';
       } catch (error) {
         console.error('Erro ao salvar plano atualizado:', error);
         aiResponse += '\n⚠️ Houve um problema ao salvar as mudanças. Tente novamente.';
@@ -452,8 +454,8 @@ export function UserDashboard() {
       // Simular processamento de IA especializada (em produção, seria OpenAI API com prompt específico)
       await new Promise(resolve => setTimeout(resolve, 2500));
 
-      // Disclaimer padrão para todas as respostas
-      const disclaimer = "⚠️ **IMPORTANTE**: Essas são informações baseadas em pesquisas e não constituem uma recomendação médica. A IA não é médica e não está te receitando ou recomendando nada.\n\n";
+      // Disclaimer obrigatório para todas as respostas conforme especificado
+      const disclaimer = "Essas são informações baseadas em pesquisa e não constituem uma recomendação. A IA não é médica e não está te receitando ou recomendando nada.\n\n";
 
       // Gerar resposta especializada baseada na mensagem do usuário
       let responseContent = '';
@@ -473,9 +475,17 @@ export function UserDashboard() {
         responseContent = `**Sobre Termogênicos:**\nPodem ajudar, mas não são mágicos. Cafeína é o mais eficaz. Priorize déficit calórico através da dieta e exercícios. Efeitos colaterais possíveis: ansiedade, insônia, taquicardia. Se usar, comece devagar e evite próximo ao sono. Mais importante: consistência na dieta e treino.`;
       } else if (message.includes('vitamina') || message.includes('multivitamínico') || message.includes('multivitaminico')) {
         responseContent = `**Sobre Vitaminas:**\nMultivitamínico pode ser útil se há deficiências na dieta. Priorize: Vitamina D (2000-4000 UI), Ômega-3 (1-2g), Magnésio (300-400mg). Faça exames anuais para verificar níveis. Uma dieta variada com frutas, vegetais e proteínas geralmente supre a maioria das necessidades.`;
+      } else if (message.includes('treino') || message.includes('exercício') || message.includes('exercicio') || message.includes('musculação')) {
+        responseContent = `**Sobre Treino:**\nConsistência é fundamental. Progressão gradual de carga/volume. Priorize exercícios compostos (agachamento, deadlift, supino). Descanso de 48-72h entre treinos do mesmo grupo muscular. Foco na técnica antes da carga. 3-5x por semana é ideal para maioria das pessoas.`;
+      } else if (message.includes('dieta') || message.includes('alimentação') || message.includes('alimentacao') || message.includes('emagrecimento')) {
+        responseContent = `**Sobre Alimentação:**\nBalanço calórico é o principal fator. Para emagrecer: déficit calórico. Para ganhar massa: superávit calórico. Priorize proteínas (1.6-2.2g/kg), carboidratos complexos, gorduras boas. Hidratação adequada. Refeições regulares. Flexibilidade mental é importante para sustentabilidade.`;
+      } else if (message.includes('sono') || message.includes('recuperação') || message.includes('recuperacao') || message.includes('descanso')) {
+        responseContent = `**Sobre Sono e Recuperação:**\n7-9h de sono por noite são fundamentais. Qualidade do sono afeta hormônios, recuperação muscular e performance. Evite telas 1h antes de dormir. Ambiente escuro e fresco. Rotina consistente de sono. Recuperação ativa pode incluir caminhadas leves.`;
+      } else if (message.includes('água') || message.includes('hidratação') || message.includes('hidratacao')) {
+        responseContent = `**Sobre Hidratação:**\n35-40ml por kg de peso corporal por dia. Aumente durante treinos e dias quentes. Urina clara indica boa hidratação. Distribua o consumo ao longo do dia. Água é suficiente para treinos até 1h. Para exercícios mais longos, considere isotônicos.`;
       } else {
-        // Responder qualquer pergunta com disclaimer
-        responseContent = `Vou responder sua pergunta baseado em informações gerais disponíveis. Para orientações específicas sobre suplementação, procure nutricionista esportivo. Para dúvidas médicas, consulte um médico. Como IA Coach, posso dar informações gerais, mas cada caso é único e sempre priorize orientação profissional personalizada.`;
+        // Responder QUALQUER tipo de pergunta como pesquisador
+        responseContent = `Como pesquisador fitness atuando para fins ilustrativos, vou fornecer informações baseadas em estudos e literatura disponível sobre sua pergunta. Atuo como fonte de conhecimento geral para ajudá-lo a entender melhor o tema. Cada situação é única e sempre recomendo consultar profissionais qualificados (médicos, nutricionistas, educadores físicos) para orientações personalizadas e adequadas ao seu caso específico.`;
       }
 
       // Combinar disclaimer + resposta
