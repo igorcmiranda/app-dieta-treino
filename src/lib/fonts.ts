@@ -1,46 +1,9 @@
 /**
  * 🎨 Font Configuration for Lasy AI Templates
  * 
- * All fonts are installed via @fontsource packages and ready to use.
- * Import any font you need in your components or layout.
+ * Font families configuration for easy use.
+ * Fonts are loaded via Next.js font optimization and @fontsource packages.
  */
-
-// Geist Fonts (Vercel's official fonts)
-import '@fontsource/geist-sans/400.css'
-import '@fontsource/geist-sans/500.css'
-import '@fontsource/geist-sans/600.css'
-import '@fontsource/geist-sans/700.css'
-
-import '@fontsource/geist-mono/400.css'
-import '@fontsource/geist-mono/500.css'
-import '@fontsource/geist-mono/600.css'
-import '@fontsource/geist-mono/700.css'
-
-// Popular Web Fonts
-import '@fontsource/inter/400.css'
-import '@fontsource/inter/500.css'
-import '@fontsource/inter/600.css'
-import '@fontsource/inter/700.css'
-
-import '@fontsource/roboto/400.css'
-import '@fontsource/roboto/500.css'
-import '@fontsource/roboto/700.css'
-
-import '@fontsource/open-sans/400.css'
-import '@fontsource/open-sans/600.css'
-import '@fontsource/open-sans/700.css'
-
-// Code Fonts
-import '@fontsource/source-code-pro/400.css'
-import '@fontsource/source-code-pro/600.css'
-
-import '@fontsource/fira-code/400.css'
-import '@fontsource/fira-code/500.css'
-import '@fontsource/fira-code/600.css'
-
-import '@fontsource/jetbrains-mono/400.css'
-import '@fontsource/jetbrains-mono/500.css'
-import '@fontsource/jetbrains-mono/600.css'
 
 /**
  * Font family configurations for easy use
