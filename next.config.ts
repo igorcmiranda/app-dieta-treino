@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Replit environment configuration - allow all hosts for proxy support
+  async rewrites() {
+    return []
+  },
   
   // Configuração de imagens para principais provedores
   images: {
