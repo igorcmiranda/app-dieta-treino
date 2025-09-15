@@ -22,6 +22,13 @@ export function AdminPanel() {
   const { logout } = useCurrentUser();
   const { users, addUser, deleteUser } = useUsers();
 
+  const resetDemoData = () => {
+    if (window.confirm('Tem certeza que deseja resetar todos os dados demo? Isso irá limpar o localStorage e recarregar a página.')) {
+      window.localStorage.clear();
+      window.location.reload();
+    }
+  };
+
   // Inicializar usuários demo se não existirem
   useEffect(() => {
     if (users.length === 0) {
@@ -82,14 +89,24 @@ export function AdminPanel() {
                 </p>
               </div>
             </div>
-            <Button 
-              onClick={logout}
-              variant="outline"
-              className="border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={resetDemoData}
+                variant="outline"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Reset Demo
+              </Button>
+              <Button 
+                onClick={logout}
+                variant="outline"
+                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </div>

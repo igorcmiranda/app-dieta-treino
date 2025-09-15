@@ -4,9 +4,12 @@ export function hasActiveSubscription(user: User): boolean {
   if (!user.subscription) return false;
   
   const now = new Date();
+  // Ensure endDate is converted to Date object if it's a string
+  const endDate = new Date(user.subscription.endDate);
+  
   return (
     user.subscription.status === 'active' &&
-    user.subscription.endDate > now
+    endDate > now
   );
 }
 
@@ -62,7 +65,9 @@ export function canDowngrade(user: User): boolean {
   if (!subscription.downgradableDate) return false;
   
   const now = new Date();
-  return now >= subscription.downgradableDate;
+  // Ensure downgradableDate is converted to Date object if it's a string
+  const downgradableDate = new Date(subscription.downgradableDate);
+  return now >= downgradableDate;
 }
 
 export function getSubscriptionLimits(user: User) {
