@@ -12,6 +12,7 @@ const initializeDemoUsers = (): User[] => {
       email: 'admin@fitai.com',
       password: 'admin123',
       isAdmin: true,
+      emailVerified: true,
       createdAt: new Date()
     },
     {
@@ -20,6 +21,7 @@ const initializeDemoUsers = (): User[] => {
       email: 'user@fitai.com',
       password: 'user123',
       isAdmin: false,
+      emailVerified: true,
       createdAt: new Date()
     },
     {
@@ -28,6 +30,7 @@ const initializeDemoUsers = (): User[] => {
       email: 'maria@fitai.com',
       password: 'maria123',
       isAdmin: false,
+      emailVerified: true,
       profile: {
         age: 28,
         gender: 'feminino',
