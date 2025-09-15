@@ -69,6 +69,7 @@ export function UserDashboard() {
   const [isAnalyzingDiet, setIsAnalyzingDiet] = useState(false);
   const [isAnalyzingPhotos, setIsAnalyzingPhotos] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [forceUpdate, setForceUpdate] = useState(0); // Estado para forçar re-renderização
   
   // Estados para sistema de assinatura
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
@@ -433,6 +434,10 @@ export function UserDashboard() {
         updatedPlan.userId = currentUser.id;
         addDietPlan(updatedPlan);
         
+        // CRÍTICO: Forçar re-renderização para mostrar mudanças imediatamente
+        // Usando um estado dummy para forçar re-render após mudanças no localStorage
+        setForceUpdate(prev => prev + 1);
+        
         // Forçar re-renderização para mostrar mudanças imediatamente
         console.log('Plano atualizado salvo com sucesso:', updatedPlan);
         
@@ -525,8 +530,37 @@ export function UserDashboard() {
       } else if (message.includes('gh') || message.includes('hormônio do crescimento') || message.includes('hormonio do crescimento')) {
         responseContent = `**Sobre Hormônio do Crescimento (GH):**\nUso apenas com prescrição médica para deficiências comprovadas. Efeitos colaterais: diabetes, problemas articulares, crescimento excessivo de órgãos. Para otimizar GH natural: sono adequado (7-9h), exercícios intensos, jejum intermitente, redução do açúcar. Suplementos naturais: arginina, glicina, GABA podem ajudar marginalmente.`;
       } else {
-        // Responder QUALQUER tipo de pergunta como pesquisador
-        responseContent = `Como pesquisador fitness atuando para fins ilustrativos, vou fornecer informações baseadas em estudos e literatura disponível sobre sua pergunta. Atuo como fonte de conhecimento geral para ajudá-lo a entender melhor o tema. Cada situação é única e sempre recomendo consultar profissionais qualificados (médicos, nutricionistas, educadores físicos) para orientações personalizadas e adequadas ao seu caso específico.`;
+        // Responder QUALQUER pergunta sobre hormônios com informações específicas
+        if (message.includes('durateston') || message.includes('enantato') || message.includes('cipionato') || message.includes('propionato') || message.includes('undecanoato')) {
+          if (message.includes('durateston') && (message.includes('enantato') || message.includes('diferença'))) {
+            responseContent = `**Durateston vs Enantato de Testosterona:**\n\n**Durateston (Mistura de Ésteres):**\n- 4 ésteres diferentes: Propionato, Fenilpropionato, Isocaproato, Decanoato\n- Liberação rápida inicial + sustentada\n- Aplicação: 1x por semana ou a cada 10 dias\n- Dosagem típica: 250-500mg/semana\n- Pico rápido nas primeiras 24-48h\n\n**Enantato de Testosterona:**\n- Éster único de ação prolongada\n- Liberação mais linear e previsível\n- Aplicação: 2x por semana (mais estável)\n- Dosagem típica: 250-500mg/semana\n- Meia-vida: 7-10 dias\n\n**Qual é melhor:** Enantato é mais previsível para controle de níveis hormonais. Durateston pode causar mais oscilações.`;
+          } else if (message.includes('durateston')) {
+            responseContent = `**Durateston - Informações Detalhadas:**\n\n**Composição:**\n- Propionato 30mg (ação rápida)\n- Fenilpropionato 60mg (ação média)\n- Isocaproato 60mg (ação média-longa)\n- Decanoato 100mg (ação prolongada)\n\n**Protocolo de Uso:**\n- Dose iniciante: 250mg/semana\n- Dose intermediária: 500mg/semana\n- Frequência: 1x/semana ou a cada 10 dias\n- Via: Intramuscular profunda\n\n**Características:**\n- Início de ação: 24-48h\n- Pico sérico: 3-7 dias\n- Duração: 2-3 semanas`;
+          } else if (message.includes('enantato')) {
+            responseContent = `**Enantato de Testosterona - Informações Detalhadas:**\n\n**Características Farmacológicas:**\n- Éster de cadeia longa\n- Meia-vida: 7-10 dias\n- Liberação constante e previsível\n- Menos oscilações hormonais\n\n**Protocolo de Uso:**\n- Dose iniciante: 250mg/semana\n- Dose intermediária: 500mg/semana\n- Frequência: 2x/semana (mais estável)\n- Exemplo: 250mg segunda + 250mg quinta\n\n**Vantagens:**\n- Mais fácil controlar níveis séricos\n- Menos efeitos colaterais por oscilação\n- Melhor para TRT (reposição)`;
+          }
+        } else if (message.includes('masteron') || message.includes('drostanolona') || message.includes('propionato de drostanolona')) {
+          responseContent = `**Masteron (Drostanolona) - Informações Técnicas:**\n\n**Características:**\n- Derivado da DHT (di-hidrotestosterona)\n- Propriedades anti-estrogênicas\n- Excelente para definição muscular\n- Não aromatiza (não vira estrogênio)\n\n**Dosagem e Uso:**\n- Propionato: 100mg a cada 2 dias\n- Enantato: 200mg 2x/semana\n- Ciclo típico: 6-8 semanas\n- Melhor em cutting (definição)\n\n**Efeitos:**\n- Define músculos (aspecto 'seco')\n- Reduz retenção hídrica\n- Melhora vascularização\n- Aumenta dureza muscular`;
+        } else if (message.includes('trenbolona') || message.includes('tren') || message.includes('acetato de trenbolona')) {
+          responseContent = `**Trenbolona - Informações Técnicas:**\n\n**Características:**\n- Esteroide extremamente potente\n- 5x mais anabólico que testosterona\n- Não aromatiza\n- Efeitos colaterais severos\n\n**Variações:**\n- Acetato: 75-100mg/dia\n- Enantato: 200-400mg/semana\n- Hexaidrobenzilcarbonato: 200mg/semana\n\n**Efeitos:**\n- Ganho rápido de massa\n- Queima de gordura simultânea\n- Força extrema\n- Vascularização intensa\n\n**Riscos:**\n- Insônia severa\n- Suor noturno\n- Agressividade\n- Problemas cardiovasculares`;
+        } else if (message.includes('dianabol') || message.includes('metandrostenolona') || message.includes('dbol')) {
+          responseContent = `**Dianabol (Metandrostenolona) - Informações Técnicas:**\n\n**Características:**\n- Esteroide oral clássico\n- Ganho rápido de massa e força\n- Aromatiza facilmente\n- Hepatotóxico\n\n**Dosagem:**\n- Iniciante: 20-30mg/dia\n- Intermediário: 30-50mg/dia\n- Dividir em 2-3 doses/dia\n- Ciclo: 4-6 semanas máximo\n\n**Efeitos:**\n- Ganho rápido de peso (água+músculo)\n- Aumento significativo de força\n- Bombeamento muscular intenso\n- Retenção hídrica\n\n**Precauções:**\n- Usar hepatoprotetores\n- Controlar pressão arterial\n- Anti-estrogênicos necessários`;
+        } else if (message.includes('boldenona') || message.includes('equipoise') || message.includes('undecilenoato')) {
+          responseContent = `**Boldenona (Equipoise) - Informações Técnicas:**\n\n**Características:**\n- Derivado da testosterona modificado\n- Ação muito prolongada\n- Meia-vida: 14 dias\n- Efeitos colaterais moderados\n\n**Dosagem:**\n- Homens: 400-800mg/semana\n- Mulheres: 50-100mg/semana\n- Aplicação: 2x/semana\n- Ciclo: 12-16 semanas\n\n**Efeitos:**\n- Ganho lento mas qualitativo\n- Aumento do apetite\n- Melhora da vascularização\n- Ganhos mais 'limpos'\n\n**Vantagens:**\n- Poucos efeitos colaterais\n- Não hepatotóxico\n- Bom para iniciantes`;
+        } else if (message.includes('primobolan') || message.includes('metenolona') || message.includes('primo')) {
+          responseContent = `**Primobolan (Metenolona) - Informações Técnicas:**\n\n**Características:**\n- Esteroide muito seguro\n- Derivado da DHT\n- Não aromatiza\n- Mínimos efeitos colaterais\n\n**Variações:**\n- Oral (acetato): 50-100mg/dia\n- Injetável (enantato): 400-600mg/semana\n- Oral tem baixa biodisponibilidade\n\n**Efeitos:**\n- Ganhos lentos mas duradouros\n- Preserva massa em cutting\n- Define músculos\n- Queima gordura moderadamente\n\n**Ideal para:**\n- Mulheres (muito seguro)\n- Primeira experiência\n- Cutting/definição\n- Recomposição corporal`;
+        } else if (message.includes('anadrol') || message.includes('oximetolona') || message.includes('hemogenin')) {
+          responseContent = `**Anadrol (Oximetolona) - Informações Técnicas:**\n\n**Características:**\n- Esteroide oral extremamente potente\n- Ganhos muito rápidos\n- Altamente hepatotóxico\n- Retenção hídrica intensa\n\n**Dosagem:**\n- Iniciante: 25-50mg/dia\n- Avançado: 50-100mg/dia\n- Ciclo: 4-6 semanas máximo\n- Tomar pela manhã\n\n**Efeitos:**\n- Ganho de 5-10kg em 4 semanas\n- Força explosiva\n- Bombeamento extremo\n- Melhora da recuperação\n\n**Riscos:**\n- Hepatotoxicidade severa\n- Pressão arterial elevada\n- Ginecomastia (paradoxal)\n- Supressão hormonal intensa`;
+        } else if (message.includes('deca') || message.includes('decanoato') || message.includes('nandrolona')) {
+          responseContent = `**Deca-Durabolin (Nandrolona) - Informações Técnicas:**\n\n**Características:**\n- Ação muito prolongada\n- Meia-vida: 12-15 dias\n- Excelente para massa\n- Beneficia articulações\n\n**Dosagem:**\n- Iniciante: 200-300mg/semana\n- Intermediário: 400-500mg/semana\n- Aplicação: 1x/semana\n- Ciclo: 10-12 semanas\n\n**Efeitos:**\n- Ganho sólido de massa\n- Melhora dores articulares\n- Aumento da força\n- Recuperação excelente\n\n**Características únicas:**\n- Lubrifica articulações\n- Boa retenção de nitrogênio\n- Poucos efeitos androgênicos\n- TPC mais complexa`;
+        } else if (message.includes('sustanon') || message.includes('testosterona mistura')) {
+          responseContent = `**Sustanon - Informações Técnicas:**\n\n**Composição (por ampola 250mg):**\n- Propionato: 30mg\n- Fenilpropionato: 60mg\n- Isocaproato: 60mg\n- Decanoato: 100mg\n\n**Características:**\n- Liberação em 4 fases\n- Ação rápida + prolongada\n- Pico em 24-48h\n- Duração: 2-3 semanas\n\n**Protocolo:**\n- Dose: 250-750mg/semana\n- Frequência: 1x/semana ou a cada 10 dias\n- Ciclo: 8-12 semanas\n\n**Vantagens:**\n- Menos aplicações\n- Efeito rápido\n- Conveniente para iniciantes\n\n**Desvantagens:**\n- Oscilações hormonais\n- Controle menos preciso`;
+        } else if (message.includes('clembuterol') || message.includes('clenbuterol') || message.includes('clen')) {
+          responseContent = `**Clembuterol - Informações Técnicas:**\n\n**Características:**\n- Broncodilatador com efeito termogênico\n- Não é esteroide anabolizante\n- Estimula receptores beta-2\n- Usado para cutting\n\n**Protocolo típico:**\n- Dose inicial: 20mcg/dia\n- Aumento gradual: +20mcg a cada 2-3 dias\n- Dose máxima: 120-140mcg/dia\n- Ciclo: 2 semanas on, 2 semanas off\n\n**Efeitos:**\n- Queima de gordura acelerada\n- Preservação de massa muscular\n- Aumento da temperatura corporal\n- Supressão do apetite\n\n**Efeitos colaterais:**\n- Tremores nas mãos\n- Insônia\n- Sudorese\n- Taquicardia\n- Câimbras`;
+        } else {
+          // Para qualquer outra pergunta sobre hormônios/suplementos não mapeada
+          responseContent = `**Informações Educacionais sobre sua Pergunta:**\n\nComo fonte de conhecimento técnico para fins educacionais, posso fornecer informações baseadas em literatura científica disponível sobre praticamente qualquer composto, protocolo ou substância relacionada ao fitness e bodybuilding.\n\n**Sua pergunta específica requer uma resposta mais detalhada.** Por favor, reformule sua pergunta sendo mais específico sobre:\n\n- Qual substância exata você quer saber\n- Que tipo de informação busca (dosagem, efeitos, comparações, etc.)\n- Se quer saber sobre protocolos, ciclos, ou apenas características\n\n**Exemplos de perguntas que posso responder:**\n• "Qual a diferença entre X e Y?"\n• "Como funciona o composto Z?"\n• "Qual a dosagem típica de W?"\n• "Quais os efeitos colaterais de K?"\n\nTenho conhecimento sobre praticamente todos os compostos do universo fitness/bodybuilding.`;
+        }
       }
 
       // Combinar disclaimer + resposta
