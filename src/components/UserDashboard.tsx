@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyses, useWorkoutProgress } from '@/lib/hooks';
 import { UserProfile, FoodEntry, WorkoutProgress, MealEntry } from '@/lib/types';
 import { generateDietPlan, generateWorkoutPlan } from '@/lib/fitness-utils';
+import { analyzeBodyPhotos } from '@/lib/body-analysis';
 import { canAccessAI, hasActiveSubscription } from '@/lib/subscription-utils';
 import { SubscriptionRequired } from './SubscriptionRequired';
 import { SubscriptionPlans } from './SubscriptionPlans';
@@ -65,6 +66,7 @@ export function UserDashboard() {
   const [resultsTab, setResultsTab] = useState('diet');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzingDiet, setIsAnalyzingDiet] = useState(false);
+  const [isAnalyzingPhotos, setIsAnalyzingPhotos] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   
   // Estados para sistema de assinatura
@@ -230,6 +232,45 @@ export function UserDashboard() {
       }));
     };
     reader.readAsDataURL(file);
+  };
+
+  // Função para analisar fotos separadamente
+  const analyzePhotosOnly = async () => {
+    if (!currentUser) return;
+    
+    const hasPhotos = photos.front || photos.back || photos.left || photos.right;
+    if (!hasPhotos) {
+      alert('Por favor, adicione pelo menos uma foto para análise.');
+      return;
+    }
+
+    // Verificar se usuário tem assinatura ativa
+    if (!hasActiveSubscription(currentUser)) {
+      setSubscriptionFeature('Análise corporal com IA');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    setIsAnalyzingPhotos(true);
+    
+    try {
+      console.log('Iniciando análise corporal...');
+      const analysisResult = await analyzeBodyPhotos(photos);
+      const bodyAnalysis = {
+        userId: currentUser.id,
+        photos,
+        analysis: analysisResult
+      };
+      addBodyAnalysis(bodyAnalysis);
+      console.log('Análise corporal concluída:', analysisResult);
+      alert('✅ Análise corporal concluída! Veja os resultados na aba "Resultados".');
+      setActiveTab('results');
+    } catch (error) {
+      console.error('Erro na análise corporal:', error);
+      alert('❌ Erro ao analisar fotos. Tente novamente.');
+    } finally {
+      setIsAnalyzingPhotos(false);
+    }
   };
 
   // Nova função para analisar PDF/imagem da dieta
@@ -452,17 +493,19 @@ export function UserDashboard() {
 
       // Análise corporal com fotos
       if (photos.front || photos.back || photos.left || photos.right) {
-        const bodyAnalysis = {
-          userId: currentUser.id,
-          photos,
-          analysis: {
-            proportions: 'Análise corporal baseada nas fotos fornecidas...',
-            strengths: ['Força 1', 'Força 2'],
-            improvementAreas: ['Área 1', 'Área 2'],
-            recommendations: ['Recomendação 1', 'Recomendação 2']
-          }
-        };
-        addBodyAnalysis(bodyAnalysis);
+        try {
+          console.log('Iniciando análise corporal...');
+          const analysisResult = await analyzeBodyPhotos(photos);
+          const bodyAnalysis = {
+            userId: currentUser.id,
+            photos,
+            analysis: analysisResult
+          };
+          addBodyAnalysis(bodyAnalysis);
+          console.log('Análise corporal concluída:', analysisResult);
+        } catch (error) {
+          console.error('Erro na análise corporal:', error);
+        }
       }
 
       setActiveTab('results');
@@ -513,7 +556,7 @@ export function UserDashboard() {
               <h1 className="text-2xl font-bold text-gray-900">
                 Olá, {currentUser.name}!
               </h1>
-              <p className="text-gray-600">Bem-vindo ao seu dashboard</p>
+              <p className="text-gray-600">Bem-vindo(a) à sua IA Fitness Pessoal</p>
             </div>
           </div>
           <Button 
@@ -616,11 +659,11 @@ export function UserDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sedentario">Sedentário</SelectItem>
-                        <SelectItem value="leve">Leve</SelectItem>
-                        <SelectItem value="moderado">Moderado</SelectItem>
-                        <SelectItem value="intenso">Intenso</SelectItem>
-                        <SelectItem value="muito-intenso">Muito Intenso</SelectItem>
+                        <SelectItem value="sedentario">Sedentário (0-1 treinos/semana)</SelectItem>
+                        <SelectItem value="leve">Leve (2-3 treinos/semana)</SelectItem>
+                        <SelectItem value="moderado">Moderado (3-4 treinos/semana)</SelectItem>
+                        <SelectItem value="intenso">Intenso (5-6 treinos/semana)</SelectItem>
+                        <SelectItem value="muito-intenso">Muito Intenso (6-7 treinos/semana)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -931,6 +974,32 @@ export function UserDashboard() {
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Botão para análise de fotos */}
+                  {(photos.front || photos.back || photos.left || photos.right) && (
+                    <div className="mt-4 text-center">
+                      <Button 
+                        onClick={analyzePhotosOnly}
+                        disabled={isAnalyzingPhotos}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {isAnalyzingPhotos ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Analisando fotos...
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-4 h-4 mr-2" />
+                            Analisar Fotos
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Faça a análise corporal independente dos planos
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

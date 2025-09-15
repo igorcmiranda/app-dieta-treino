@@ -144,31 +144,64 @@ function getMealTime(mealName: string): string {
 }
 
 async function generateMealFoods(calories: number, macros: any, mealName: string, profile: UserProfile) {
-  // Base de alimentos por refeição
+  // Base de alimentos por refeição com validação adequada por tipo
   const foodDatabase = {
     'Café da Manhã': [
       { food: 'Aveia', calories: 68, protein: 2.4, carbs: 12, fat: 1.4, quantity: '30g' },
       { food: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3, quantity: '1 unidade média' },
       { food: 'Leite desnatado', calories: 42, protein: 3.4, carbs: 5, fat: 0.1, quantity: '200ml' },
       { food: 'Ovo', calories: 70, protein: 6, carbs: 0.6, fat: 5, quantity: '1 unidade' },
-      { food: 'Pão integral', calories: 69, protein: 3.6, carbs: 11.6, fat: 1.2, quantity: '1 fatia' }
+      { food: 'Pão integral', calories: 69, protein: 3.6, carbs: 11.6, fat: 1.2, quantity: '1 fatia' },
+      { food: 'Iogurte natural', calories: 61, protein: 3.5, carbs: 4.7, fat: 3.3, quantity: '100g' },
+      { food: 'Granola', calories: 471, protein: 14.8, carbs: 64.7, fat: 18.1, quantity: '30g' }
+    ],
+    'Lanche da Manhã': [
+      { food: 'Maçã', calories: 52, protein: 0.3, carbs: 14, fat: 0.2, quantity: '1 unidade média' },
+      { food: 'Castanha do Pará', calories: 656, protein: 14.3, carbs: 4.3, fat: 67.1, quantity: '15g' },
+      { food: 'Iogurte natural', calories: 61, protein: 3.5, carbs: 4.7, fat: 3.3, quantity: '100g' },
+      { food: 'Amendoim', calories: 567, protein: 26.2, carbs: 16.1, fat: 47.9, quantity: '20g' },
+      { food: 'Suco natural laranja', calories: 45, protein: 0.7, carbs: 10.4, fat: 0.2, quantity: '200ml' }
     ],
     'Almoço': [
       { food: 'Arroz integral', calories: 111, protein: 2.6, carbs: 22, fat: 0.9, quantity: '100g' },
       { food: 'Feijão', calories: 76, protein: 4.8, carbs: 14, fat: 0.5, quantity: '100g' },
       { food: 'Frango grelhado', calories: 165, protein: 31, carbs: 0, fat: 3.6, quantity: '100g' },
       { food: 'Brócolis', calories: 25, protein: 3, carbs: 5, fat: 0.3, quantity: '100g' },
-      { food: 'Salada verde', calories: 15, protein: 1.5, carbs: 3, fat: 0.2, quantity: '100g' }
+      { food: 'Salada verde', calories: 15, protein: 1.5, carbs: 3, fat: 0.2, quantity: '100g' },
+      { food: 'Carne vermelha magra', calories: 250, protein: 26, carbs: 0, fat: 15, quantity: '100g' },
+      { food: 'Peixe grelhado', calories: 96, protein: 20.4, carbs: 0, fat: 1.7, quantity: '100g' }
+    ],
+    'Lanche da Tarde': [
+      { food: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3, quantity: '1 unidade média' },
+      { food: 'Biscoito integral', calories: 35, protein: 1.2, carbs: 5.8, fat: 1.0, quantity: '2 unidades' },
+      { food: 'Chá verde', calories: 2, protein: 0.2, carbs: 0, fat: 0, quantity: '200ml' },
+      { food: 'Vitamina de frutas', calories: 120, protein: 4, carbs: 25, fat: 1, quantity: '200ml' },
+      { food: 'Torrada integral', calories: 65, protein: 2.4, carbs: 12.2, fat: 1.1, quantity: '2 fatias' },
+      { food: 'Queijo cottage', calories: 98, protein: 11, carbs: 3.4, fat: 4.3, quantity: '50g' }
     ],
     'Jantar': [
       { food: 'Batata doce', calories: 86, protein: 2, carbs: 20, fat: 0.1, quantity: '100g' },
       { food: 'Salmão grelhado', calories: 208, protein: 22, carbs: 0, fat: 12, quantity: '100g' },
       { food: 'Aspargos', calories: 20, protein: 2.2, carbs: 4, fat: 0.1, quantity: '100g' },
-      { food: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9, quantity: '100g' }
+      { food: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9, quantity: '100g' },
+      { food: 'Peixe grelhado', calories: 96, protein: 20.4, carbs: 0, fat: 1.7, quantity: '100g' },
+      { food: 'Legumes refogados', calories: 35, protein: 1.5, carbs: 8, fat: 0.3, quantity: '150g' },
+      { food: 'Frango grelhado', calories: 165, protein: 31, carbs: 0, fat: 3.6, quantity: '100g' }
+    ],
+    'Ceia': [
+      { food: 'Iogurte natural', calories: 61, protein: 3.5, carbs: 4.7, fat: 3.3, quantity: '100g' },
+      { food: 'Chá de camomila', calories: 2, protein: 0, carbs: 0.4, fat: 0, quantity: '200ml' },
+      { food: 'Castanha do Pará', calories: 656, protein: 14.3, carbs: 4.3, fat: 67.1, quantity: '10g' },
+      { food: 'Leite morno', calories: 42, protein: 3.4, carbs: 5, fat: 0.1, quantity: '150ml' },
+      { food: 'Queijo cottage', calories: 98, protein: 11, carbs: 3.4, fat: 4.3, quantity: '50g' }
     ]
   };
   
-  const availableFoods = foodDatabase[mealName as keyof typeof foodDatabase] || foodDatabase['Almoço'];
+  // Garantir que cada refeição tenha alimentos apropriados
+  const availableFoods = foodDatabase[mealName as keyof typeof foodDatabase];
+  if (!availableFoods) {
+    throw new Error(`Tipo de refeição não reconhecido: ${mealName}`);
+  }
   
   // Seleção inteligente de alimentos para atingir as calorias da refeição
   const selectedFoods = [];
