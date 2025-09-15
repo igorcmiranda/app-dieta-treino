@@ -798,6 +798,9 @@
   .min-h-4 {
     min-height: calc(var(--spacing) * 4);
   }
+  .min-h-20 {
+    min-height: calc(var(--spacing) * 20);
+  }
   .min-h-\[80px\] {
     min-height: 80px;
   }

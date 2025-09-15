@@ -29,7 +29,9 @@ const initializeDemoUsers = (): User[] => {
         weight: 75,
         activityLevel: 'moderado',
         goal: 'manter-peso-perder-gordura',
-        preferredMuscleGroups: ['peito', 'braços', 'abdômen', 'pernas']
+        preferredMuscleGroups: ['peito', 'braços', 'abdômen', 'pernas'],
+        foodRestrictions: ['lactose', 'glúten'],
+        foodPreferences: ['frango', 'arroz integral', 'brócolis', 'banana']
       },
       subscription: {
         plan: 'premium',
@@ -57,7 +59,9 @@ const initializeDemoUsers = (): User[] => {
         weight: 60,
         activityLevel: 'moderado',
         goal: 'manter-peso-perder-gordura',
-        preferredMuscleGroups: ['pernas', 'glúteos']
+        preferredMuscleGroups: ['pernas', 'glúteos'],
+        foodRestrictions: ['carne vermelha'],
+        foodPreferences: ['salmão', 'quinoa', 'abacate', 'iogurte']
       },
       createdAt: new Date()
     }

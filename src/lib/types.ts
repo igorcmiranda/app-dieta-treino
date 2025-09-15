@@ -22,6 +22,9 @@ export interface UserProfile {
   activityLevel: 'sedentario' | 'leve' | 'moderado' | 'intenso' | 'muito-intenso';
   goal: 'engordar' | 'emagrecer' | 'manter-peso-perder-gordura';
   preferredMuscleGroups: string[];
+  // Novas preferências alimentares
+  foodRestrictions: string[]; // Alimentos que não come
+  foodPreferences: string[]; // Alimentos que gosta de comer
 }
 
 export interface UserSubscription {

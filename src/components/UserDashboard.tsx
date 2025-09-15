@@ -83,7 +83,9 @@ export function UserDashboard() {
     weight: 0,
     activityLevel: 'moderado',
     goal: 'manter-peso-perder-gordura',
-    preferredMuscleGroups: []
+    preferredMuscleGroups: [],
+    foodRestrictions: [],
+    foodPreferences: []
   });
 
   // Estados da alimentação - NOVO SISTEMA
@@ -684,6 +686,42 @@ export function UserDashboard() {
                         <SelectItem value="melhorar-condicionamento">Melhorar Condicionamento</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="foodRestrictions">Alimentos que não como (restrições)</Label>
+                      <Textarea
+                        id="foodRestrictions"
+                        placeholder="Ex: lactose, glúten, amendoim, carne vermelha..."
+                        value={(profile.foodRestrictions || []).join(', ')}
+                        onChange={(e) => setProfile(prev => ({ 
+                          ...prev, 
+                          foodRestrictions: e.target.value.split(',').map(item => item.trim()).filter(item => item.length > 0)
+                        }))}
+                        className="min-h-20"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Separe os alimentos por vírgula. Estes alimentos serão evitados na sua dieta.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="foodPreferences">Alimentos que gosto de comer (preferências)</Label>
+                      <Textarea
+                        id="foodPreferences"
+                        placeholder="Ex: frango, arroz integral, brócolis, banana, salmão..."
+                        value={(profile.foodPreferences || []).join(', ')}
+                        onChange={(e) => setProfile(prev => ({ 
+                          ...prev, 
+                          foodPreferences: e.target.value.split(',').map(item => item.trim()).filter(item => item.length > 0)
+                        }))}
+                        className="min-h-20"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Separe os alimentos por vírgula. Estes alimentos serão priorizados na sua dieta.
+                      </p>
+                    </div>
                   </div>
 
                   <Button type="submit" className="w-full">

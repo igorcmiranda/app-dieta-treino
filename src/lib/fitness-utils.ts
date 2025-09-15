@@ -203,13 +203,53 @@ async function generateMealFoods(calories: number, macros: any, mealName: string
     throw new Error(`Tipo de refeição não reconhecido: ${mealName}`);
   }
   
+  // Filtrar alimentos com base nas restrições e preferências do usuário
+  let filteredFoods = [...availableFoods];
+  
+  // Remover alimentos restritos
+  if (profile.foodRestrictions && profile.foodRestrictions.length > 0) {
+    filteredFoods = filteredFoods.filter(food => {
+      const foodName = food.food.toLowerCase();
+      return !profile.foodRestrictions!.some(restriction => 
+        foodName.includes(restriction.toLowerCase()) || 
+        restriction.toLowerCase().includes(foodName)
+      );
+    });
+  }
+  
+  // Priorizar alimentos preferidos (colocar no início da lista)
+  if (profile.foodPreferences && profile.foodPreferences.length > 0) {
+    const preferredFoods = filteredFoods.filter(food => {
+      const foodName = food.food.toLowerCase();
+      return profile.foodPreferences!.some(preference => 
+        foodName.includes(preference.toLowerCase()) || 
+        preference.toLowerCase().includes(foodName)
+      );
+    });
+    
+    const otherFoods = filteredFoods.filter(food => {
+      const foodName = food.food.toLowerCase();
+      return !profile.foodPreferences!.some(preference => 
+        foodName.includes(preference.toLowerCase()) || 
+        preference.toLowerCase().includes(foodName)
+      );
+    });
+    
+    filteredFoods = [...preferredFoods, ...otherFoods];
+  }
+  
+  // Se após filtrar não sobrou nenhum alimento, usar os originais como fallback
+  if (filteredFoods.length === 0) {
+    filteredFoods = [...availableFoods];
+  }
+  
   // Seleção inteligente de alimentos para atingir as calorias da refeição
   const selectedFoods = [];
   let remainingCalories = calories;
   
   // Algoritmo simples de seleção
-  for (let i = 0; i < Math.min(3, availableFoods.length) && remainingCalories > 50; i++) {
-    const food = availableFoods[i];
+  for (let i = 0; i < Math.min(3, filteredFoods.length) && remainingCalories > 50; i++) {
+    const food = filteredFoods[i];
     if (food.calories <= remainingCalories * 1.2) {
       selectedFoods.push(food);
       remainingCalories -= food.calories;
