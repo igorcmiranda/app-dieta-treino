@@ -436,17 +436,18 @@ export function UserDashboard() {
     
     try {
       // Gerar plano de dieta
-      const dietPlan = await generateDietPlan(currentUser.profile, currentMeals);
+      const allFoods = currentMeals.flatMap(meal => meal.foods);
+      const dietPlan = await generateDietPlan(currentUser.profile, allFoods);
       addDietPlan({
-        userId: currentUser.id,
-        ...dietPlan
+        ...dietPlan,
+        userId: currentUser.id
       });
 
       // Gerar plano de treino
-      const workoutPlan = await generateWorkoutPlan(currentUser.profile);
+      const workoutPlan = await generateWorkoutPlan(currentUser.profile, currentUser.profile.preferredMuscleGroups);
       addWorkoutPlan({
-        userId: currentUser.id,
-        ...workoutPlan
+        ...workoutPlan,
+        userId: currentUser.id
       });
 
       // Análise corporal com fotos
@@ -454,9 +455,12 @@ export function UserDashboard() {
         const bodyAnalysis = {
           userId: currentUser.id,
           photos,
-          analysis: 'Análise corporal baseada nas fotos fornecidas...',
-          recommendations: ['Recomendação 1', 'Recomendação 2'],
-          date: new Date().toISOString()
+          analysis: {
+            proportions: 'Análise corporal baseada nas fotos fornecidas...',
+            strengths: ['Força 1', 'Força 2'],
+            improvementAreas: ['Área 1', 'Área 2'],
+            recommendations: ['Recomendação 1', 'Recomendação 2']
+          }
         };
         addBodyAnalysis(bodyAnalysis);
       }
@@ -761,7 +765,7 @@ export function UserDashboard() {
                             />
                             <Select 
                               value={newFood.measurement} 
-                              onValueChange={(value) => setNewFood(prev => ({ ...prev, measurement: value }))}
+                              onValueChange={(value: 'colher-sopa' | 'colher-cha' | 'xicara' | 'gramas' | 'ml' | 'unidade') => setNewFood(prev => ({ ...prev, measurement: value }))}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -1004,7 +1008,7 @@ export function UserDashboard() {
                             <SelectContent>
                               {currentWorkoutPlan.workouts.map((workout) => (
                                 <SelectItem key={workout.day} value={workout.day}>
-                                  {workout.day} - {workout.focus}
+                                  {workout.day} - {workout.muscleGroup}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1171,7 +1175,7 @@ export function UserDashboard() {
                             <div key={index} className="border rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-3">
                                 <Clock className="w-4 h-4 text-gray-500" />
-                                <h4 className="font-medium">{meal.name}</h4>
+                                <h4 className="font-medium">{meal.meal}</h4>
                                 <Badge variant="outline">{meal.time}</Badge>
                               </div>
                               <div className="space-y-2">
@@ -1179,7 +1183,7 @@ export function UserDashboard() {
                                   <div key={foodIndex} className="flex justify-between items-center text-sm">
                                     <span>{food.food}</span>
                                     <span className="text-gray-500">
-                                      {food.quantity} {food.measurement}
+                                      {food.quantity}
                                     </span>
                                   </div>
                                 ))}
@@ -1224,7 +1228,7 @@ export function UserDashboard() {
                             <div className="flex items-center gap-2 mb-3">
                               <Target className="w-4 h-4 text-gray-500" />
                               <h4 className="font-medium">{workout.day}</h4>
-                              <Badge variant="outline">{workout.focus}</Badge>
+                              <Badge variant="outline">{workout.muscleGroup}</Badge>
                             </div>
                             <div className="space-y-2">
                               {workout.exercises.map((exercise, exerciseIndex) => (
@@ -1292,13 +1296,13 @@ export function UserDashboard() {
                         <div className="space-y-4">
                           <div>
                             <h4 className="font-medium mb-2">Análise</h4>
-                            <p className="text-gray-600">{currentBodyAnalysis.analysis}</p>
+                            <p className="text-gray-600">{currentBodyAnalysis.analysis.proportions}</p>
                           </div>
 
                           <div>
                             <h4 className="font-medium mb-2">Recomendações</h4>
                             <ul className="space-y-1">
-                              {currentBodyAnalysis.recommendations.map((rec, index) => (
+                              {currentBodyAnalysis.analysis.recommendations.map((rec: string, index: number) => (
                                 <li key={index} className="flex items-start gap-2 text-gray-600">
                                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                                   {rec}
@@ -1337,8 +1341,6 @@ export function UserDashboard() {
       {/* Modais de Assinatura */}
       {showSubscriptionPlans && (
         <SubscriptionRequired
-          isOpen={showSubscriptionPlans}
-          onClose={() => setShowSubscriptionPlans(false)}
           feature={subscriptionFeature}
           onSelectPlan={handlePlanSelection}
         />
@@ -1346,9 +1348,8 @@ export function UserDashboard() {
 
       {showPayment && selectedPlan && (
         <PaymentScreen
-          isOpen={showPayment}
-          onClose={() => setShowPayment(false)}
-          plan={selectedPlan}
+          selectedPlan={selectedPlan}
+          onBack={() => setShowPayment(false)}
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}

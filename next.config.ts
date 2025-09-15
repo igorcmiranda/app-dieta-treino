@@ -3,12 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   devIndicators: false, // Remove widget de desenvolvimento Next.js
   
-  // Ignorar erros durante build (compatibilidade Vercel)
+  // Allow ESLint and TypeScript to run during builds for production quality
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Replit environment configuration - allow all hosts for proxy support
