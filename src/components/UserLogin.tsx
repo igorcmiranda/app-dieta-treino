@@ -39,6 +39,10 @@ export function UserLogin() {
     
     if (user) {
       login(user);
+      // Forçar redirecionamento imediato após login
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } else {
       setError('Email ou senha incorretos');
     }
@@ -52,6 +56,10 @@ export function UserLogin() {
     const user = authenticateUser(demoEmail, demoPassword);
     if (user) {
       login(user);
+      // Forçar redirecionamento imediato após login
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } else {
       setError('Erro ao fazer login com credenciais demo');
     }

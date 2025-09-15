@@ -333,7 +333,7 @@ export function UserDashboard() {
           waterIntake: 2.5,
           meals: [],
           macros: { protein: 150, carbs: 250, fat: 70 },
-          createdAt: new Date().toISOString()
+          createdAt: new Date()
         };
       }
       if (dietPlan) addDietPlan(dietPlan);
@@ -511,7 +511,15 @@ export function UserDashboard() {
       } else if (message.includes('água') || message.includes('hidratação') || message.includes('hidratacao')) {
         responseContent = `**Sobre Hidratação:**\n35-40ml por kg de peso corporal por dia. Aumente durante treinos e dias quentes. Urina clara indica boa hidratação. Distribua o consumo ao longo do dia. Água é suficiente para treinos até 1h. Para exercícios mais longos, considere isotônicos.`;
       } else if (message.includes('oxandrolona') || message.includes('stanozolol') || message.includes('anabolizante') || message.includes('esteroide')) {
-        responseContent = `**Sobre Anabolizantes/Esteroides:**\nOxandrolona e Stanozolol são esteroides anabolizantes controlados. Ambos têm efeitos colaterais graves: problemas hepáticos, cardiovasculares, hormonais. Stanozolol é mais hepatotóxico. Oxandrolona considerada "mais leve" mas ainda perigosa. USO ILEGAL sem prescrição médica. Alternativas naturais: treino intenso, dieta adequada, descanso, creatina, whey protein.`;
+        if (message.includes('oxandrolona') && message.includes('stanozolol')) {
+          responseContent = `**Comparação Oxandrolona vs Stanozolol:**\n\n**Oxandrolona (Anavar):**\n- Considerada mais "leve" entre os esteroides\n- Dosagem típica: 20-30mg/dia para homens, 5-10mg/dia para mulheres\n- Menos hepatotóxica que o Stanozolol\n- Efeitos: ganho de massa magra, queima de gordura\n- Meia-vida: 8-12 horas\n\n**Stanozolol (Winstrol):**\n- Esteroide mais potente e hepatotóxico\n- Dosagem típica: 30-50mg/dia via oral, 50mg a cada 2 dias injetável\n- Muito eficaz para definição muscular\n- Efeitos colaterais mais severos\n- Meia-vida: 8-9 horas (oral)\n\n**Qual é "melhor":** Oxandrolona para iniciantes devido menor toxicidade. Stanozolol para cutting/definição avançada.`;
+        } else if (message.includes('oxandrolona')) {
+          responseContent = `**Oxandrolona (Anavar) - Informações Técnicas:**\n\n**Dosagem típica:**\n- Homens: 20-30mg/dia\n- Mulheres: 5-10mg/dia\n\n**Como tomar:**\n- Dividir dose diária em 2 tomadas (meia-vida 8-12h)\n- Preferencialmente com alimentação\n- Ciclo típico: 6-8 semanas\n\n**Características:**\n- Menos hepatotóxica que outros orais\n- Boa para recomposição corporal\n- Efeitos androgênicos baixos`;  
+        } else if (message.includes('stanozolol')) {
+          responseContent = `**Stanozolol (Winstrol) - Informações Técnicas:**\n\n**Dosagem típica:**\n- Oral: 30-50mg/dia\n- Injetável: 50mg a cada 2 dias\n\n**Como tomar:**\n- Oral: dividir em 2-3 doses/dia\n- Injetável: aplicar em dias alternados\n- Ciclo típico: 6-8 semanas\n\n**Características:**\n- Muito hepatotóxico (oral)\n- Excelente para definição muscular\n- Reduz SHBG (aumenta testosterona livre)`;
+        } else {
+          responseContent = `**Sobre Esteroides Anabolizantes:**\nSão drogas derivadas da testosterona com efeitos anabólicos (construção muscular) e androgênicos (características masculinas). Uso controlado requer acompanhamento médico rigoroso devido aos riscos: problemas hepáticos, cardiovasculares, hormonais, psicológicos.`;
+        }
       } else if (message.includes('ciclo') || message.includes('tpc') || message.includes('post-ciclo')) {
         responseContent = `**Sobre Ciclos e TPC:**\nCiclos de esteroides requerem acompanhamento médico rigoroso. TPC (Terapia Pós-Ciclo) é fundamental para recuperar produção hormonal natural. Sem supervisão médica, riscos incluem: infertilidade, ginecomastia, depressão, problemas cardiovasculares. Priorize métodos naturais: treino consistente, alimentação balanceada, suplementação básica (creatina, whey).`;
       } else if (message.includes('gh') || message.includes('hormônio do crescimento') || message.includes('hormonio do crescimento')) {
@@ -1335,41 +1343,50 @@ export function UserDashboard() {
                           </div>
                           <div>
                             <Label htmlFor="meal-time">Horário (24h)</Label>
-                            <select
-                              id="meal-time"
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                              value={newMeal.time}
-                              onChange={(e) => {
-                                const timeValue = e.target.value;
-                                console.log('✅ Horário selecionado:', timeValue);
-                                setNewMeal(prev => ({ 
-                                  ...prev, 
-                                  time: timeValue 
-                                }));
-                                console.log('✅ Estado atualizado newMeal.time:', timeValue);
-                              }}
-                              required
-                            >
-                              <option value="">Selecione o horário</option>
-                              <option value="06:00">06:00</option>
-                              <option value="07:00">07:00</option>
-                              <option value="08:00">08:00</option>
-                              <option value="09:00">09:00</option>
-                              <option value="10:00">10:00</option>
-                              <option value="11:00">11:00</option>
-                              <option value="12:00">12:00</option>
-                              <option value="13:00">13:00</option>
-                              <option value="14:00">14:00</option>
-                              <option value="15:00">15:00</option>
-                              <option value="16:00">16:00</option>
-                              <option value="17:00">17:00</option>
-                              <option value="18:00">18:00</option>
-                              <option value="19:00">19:00</option>
-                              <option value="20:00">20:00</option>
-                              <option value="21:00">21:00</option>
-                              <option value="22:00">22:00</option>
-                              <option value="23:00">23:00</option>
-                            </select>
+                            <div className="grid grid-cols-2 gap-2">
+                              <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={newMeal.time.split(':')[0] || ''}
+                                onChange={(e) => {
+                                  const hour = e.target.value;
+                                  const minute = newMeal.time.split(':')[1] || '00';
+                                  const timeValue = `${hour}:${minute}`;
+                                  console.log('✅ Hora selecionada:', hour);
+                                  setNewMeal(prev => ({ 
+                                    ...prev, 
+                                    time: timeValue 
+                                  }));
+                                }}
+                                required
+                              >
+                                <option value="">Hora</option>
+                                {Array.from({ length: 24 }, (_, i) => {
+                                  const hour = i.toString().padStart(2, '0');
+                                  return <option key={hour} value={hour}>{hour}</option>;
+                                })}
+                              </select>
+                              <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={newMeal.time.split(':')[1] || ''}
+                                onChange={(e) => {
+                                  const minute = e.target.value;
+                                  const hour = newMeal.time.split(':')[0] || '00';
+                                  const timeValue = `${hour}:${minute}`;
+                                  console.log('✅ Minuto selecionado:', minute);
+                                  setNewMeal(prev => ({ 
+                                    ...prev, 
+                                    time: timeValue 
+                                  }));
+                                }}
+                                required
+                              >
+                                <option value="">Min</option>
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const minute = (i * 5).toString().padStart(2, '0');
+                                  return <option key={minute} value={minute}>{minute}</option>;
+                                })}
+                              </select>
+                            </div>
                           </div>
                         </div>
 
