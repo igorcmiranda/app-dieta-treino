@@ -6,12 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCurrentUser, useUsers } from '@/lib/hooks';
-import { LogIn, Dumbbell, Heart, Target } from 'lucide-react';
+import { LogIn, Dumbbell, Heart, Target, UserPlus } from 'lucide-react';
+import { UserRegister } from './UserRegister';
+import { SubscriptionPlans } from './SubscriptionPlans';
+import { PaymentScreen } from './PaymentScreen';
+
+type AuthScreen = 'login' | 'register' | 'plans' | 'payment';
 
 export function UserLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [currentScreen, setCurrentScreen] = useState<AuthScreen>('login');
+  const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
   const { login } = useCurrentUser();
   const { authenticateUser, users } = useUsers();
 
@@ -49,6 +56,72 @@ export function UserLogin() {
       setError('Erro ao fazer login com credenciais demo');
     }
   };
+
+  const handleRegisterSuccess = () => {
+    // Após registro bem-sucedido, mostrar tela de planos
+    setCurrentScreen('plans');
+  };
+
+  const handleSelectPlan = (planId: 'starter' | 'standard' | 'premium') => {
+    setSelectedPlan(planId);
+    setCurrentScreen('payment');
+  };
+
+  const handlePaymentSuccess = () => {
+    // Após pagamento bem-sucedido, fazer login automático
+    // Em um app real, você criaria o usuário no banco de dados
+    // Por enquanto, vamos simular um login bem-sucedido
+    const newUser = {
+      id: 'new-user-' + Date.now(),
+      name: 'Novo Usuário',
+      email: 'novo@usuario.com',
+      password: 'temp123',
+      isAdmin: false,
+      emailVerified: true,
+      createdAt: new Date(),
+      subscription: {
+        plan: selectedPlan!,
+        status: 'active' as const,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+        canDowngrade: false,
+        downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000), // 4 meses
+        dietsUsedThisMonth: 0,
+        workoutsUsedThisMonth: 0
+      }
+    };
+    
+    login(newUser);
+  };
+
+  // Renderizar tela baseada no estado atual
+  if (currentScreen === 'register') {
+    return (
+      <UserRegister
+        onBack={() => setCurrentScreen('login')}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
+    );
+  }
+
+  if (currentScreen === 'plans') {
+    return (
+      <SubscriptionPlans
+        onSelectPlan={handleSelectPlan}
+        onClose={() => setCurrentScreen('login')}
+      />
+    );
+  }
+
+  if (currentScreen === 'payment' && selectedPlan) {
+    return (
+      <PaymentScreen
+        selectedPlan={selectedPlan}
+        onBack={() => setCurrentScreen('plans')}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
@@ -122,6 +195,18 @@ export function UserLogin() {
                 Entrar
               </Button>
             </form>
+
+            {/* Register Button */}
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentScreen('register')}
+                className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Não tem conta? Cadastre-se agora mesmo
+              </Button>
+            </div>
 
             {/* Demo Credentials */}
             <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
