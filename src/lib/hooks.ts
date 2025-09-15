@@ -45,17 +45,21 @@ const initializeDemoUsers = (): User[] => {
 // Simulação de banco de dados local (localStorage)
 export function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     try {
-      const item = window.localStorage.getItem(key);
-      if (item) {
-        setStoredValue(JSON.parse(item));
-      } else if (key === 'fitness-app-users') {
-        // Inicializar dados demo se não existirem usuários
-        const demoUsers = initializeDemoUsers();
-        window.localStorage.setItem(key, JSON.stringify(demoUsers));
-        setStoredValue(demoUsers as T);
+      if (typeof window !== 'undefined') {
+        const item = window.localStorage.getItem(key);
+        if (item) {
+          const parsedValue = JSON.parse(item);
+          setStoredValue(parsedValue);
+        } else if (key === 'fitness-app-users') {
+          // Inicializar dados demo se não existirem usuários
+          const demoUsers = initializeDemoUsers();
+          window.localStorage.setItem(key, JSON.stringify(demoUsers));
+          setStoredValue(demoUsers as T);
+        }
       }
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
@@ -64,6 +68,8 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         const demoUsers = initializeDemoUsers();
         setStoredValue(demoUsers as T);
       }
+    } finally {
+      setIsInitialized(true);
     }
   }, [key]);
 
@@ -71,18 +77,20 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      }
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
     }
   };
 
-  return [storedValue, setValue] as const;
+  return [storedValue, setValue, isInitialized] as const;
 }
 
 // Hook para gerenciar usuários
 export function useUsers() {
-  const [users, setUsers] = useLocalStorage<User[]>('fitness-app-users', []);
+  const [users, setUsers, isInitialized] = useLocalStorage<User[]>('fitness-app-users', []);
 
   const addUser = (userData: Omit<User, 'id' | 'createdAt'>) => {
     const newUser: User = {
@@ -122,7 +130,8 @@ export function useUsers() {
     updateUser,
     deleteUser,
     getUserById,
-    authenticateUser
+    authenticateUser,
+    isInitialized
   };
 }
 
