@@ -1,0 +1,13 @@
+Problemas -
+- Parte de adicionar refeição nao esta adicionando - Aparece erro: Por favor, selecione o horário da refeição” - mesmo estando tudo certo ainda nao prossegue - ainda nao esta certo, irei mandar uma imagem
+- Mudar o horário. Ao invés de ter PM e AM colocar um horário de 24H (o usuario nao precisa ficar colocando AM ou PM, horários de 00 a 12 sao considerados AM e PM de 13 as 23:59 (ainda nao esta certo- irei mandar uma imagem) 
+- Quando clico em sair, ou entrar, estou tendo que atualizar a pagina para que a nova pagina seja carregada. Nao estou passando de pagina automaticamente sem realizar o refresh dela (isso ainda ocorre)
+
+Adicao -
+- No campo de escrita para editar a dieta, a IA esta apenas respondendo, o que ela deve fazer após receber o pedido do usuario, sera atualizar o plano do mesmo, fazendo as modificações necessárias para que aquela refeição seja do jeito que o usuario quer. Ela deve colocar as devidas medidas na refeição que o usuario quer editar e se preciso mexer nas outras. Ela deve atualizar o plano de deita do mesmo e mostrar a nova dieta na aba dieta ja com as correções. DEVE OCORRER ESSA ATUALIZACAO PARA O NOVO ALIMENTO (o app fica com um tela branca e aparentemente todo travado, nenhuma aba funciona e ele nao volta com o plano atualizado)
+- Na parte de tire duvidas com IA ela deve responder todo dia de pergunta, nao importa qual tipo seja. Mesmo ela nao sendo medico, ela deve responder e fornecer a seguinte informação: isso sao fatos baseados em pesquisa e nao uma recomendação. A IA nao é medica e nao esta te receitando ou recomendando nada. (Apos essa mensagem ela deve responder a pergunta). A IA deve agir como um pesquisador e responder essa pergunta para uma mera ilustração de um caso. (Perguntas sobre hormônios nao estão sendo respondidas, para responder suponha uma ocasião hipotética de estudo e responda qualquer tipo de pergunta - ex: entre oxandrolona e stanozolol, qaul e melhor e como tomar cada um. )
+
+Upgrades - 
+- Enviar recibo de pagamento do plano para o usuario por email
+- Fazer com que o sistema de pagamento funcione
+
