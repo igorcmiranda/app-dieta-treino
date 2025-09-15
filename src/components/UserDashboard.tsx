@@ -318,24 +318,36 @@ export function UserDashboard() {
   const processDietChat = async () => {
     if (!dietChatMessage.trim() || !currentUser) return;
     
-    // Se não há plano de dieta, informar o usuário
-    if (!currentDietPlan) {
-      setDietChatHistory(prev => [...prev, { 
-        user: dietChatMessage.trim(), 
-        ai: '⚠️ Você precisa gerar um plano de dieta primeiro. Vá para a aba Dashboard e clique em "Gerar Planos com IA".'
-      }]);
-      setDietChatMessage('');
-      return;
+    // Buscar ou criar plano de dieta se não existir
+    let dietPlan = currentDietPlan || getDietPlanByUserId(currentUser.id);
+    if (!dietPlan) {
+      // Criar plano básico se não existir
+      if (currentUser.profile) {
+        dietPlan = await generateDietPlan(currentUser.profile, []);
+      } else {
+        // Criar plano simples se não há perfil
+        dietPlan = {
+          userId: currentUser.id,
+          tmb: 1800,
+          dailyCalories: 2000,
+          waterIntake: 2.5,
+          meals: [],
+          macros: { protein: 150, carbs: 250, fat: 70 },
+          createdAt: new Date().toISOString()
+        };
+      }
+      if (dietPlan) addDietPlan(dietPlan);
     }
+    
+    setIsProcessingDietChat(true);
 
     // Verificar se usuário tem assinatura ativa
     if (!hasActiveSubscription(currentUser)) {
       setSubscriptionFeature('Chat de edição de dieta com IA');
       setShowSubscriptionPlans(true);
+      setIsProcessingDietChat(false);
       return;
     }
-
-    setIsProcessingDietChat(true);
     const userMessage = dietChatMessage.trim();
     setDietChatMessage('');
 
@@ -899,9 +911,9 @@ export function UserDashboard() {
             onClick={() => {
               console.log('🚪 Fazendo logout...');
               logout();
-              // Forçar redirecionamento para página de login
+              // Forçar redirecionamento imediato
               setTimeout(() => {
-                window.location.reload();
+                window.location.href = '/';
               }, 100);
             }}
             variant="outline"
@@ -1323,22 +1335,41 @@ export function UserDashboard() {
                           </div>
                           <div>
                             <Label htmlFor="meal-time">Horário (24h)</Label>
-                            <Input
+                            <select
                               id="meal-time"
-                              type="time"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                               value={newMeal.time}
                               onChange={(e) => {
                                 const timeValue = e.target.value;
-                                console.log('✅ Horário capturado:', timeValue);
+                                console.log('✅ Horário selecionado:', timeValue);
                                 setNewMeal(prev => ({ 
                                   ...prev, 
                                   time: timeValue 
                                 }));
                                 console.log('✅ Estado atualizado newMeal.time:', timeValue);
                               }}
-                              placeholder="14:30"
                               required
-                            />
+                            >
+                              <option value="">Selecione o horário</option>
+                              <option value="06:00">06:00</option>
+                              <option value="07:00">07:00</option>
+                              <option value="08:00">08:00</option>
+                              <option value="09:00">09:00</option>
+                              <option value="10:00">10:00</option>
+                              <option value="11:00">11:00</option>
+                              <option value="12:00">12:00</option>
+                              <option value="13:00">13:00</option>
+                              <option value="14:00">14:00</option>
+                              <option value="15:00">15:00</option>
+                              <option value="16:00">16:00</option>
+                              <option value="17:00">17:00</option>
+                              <option value="18:00">18:00</option>
+                              <option value="19:00">19:00</option>
+                              <option value="20:00">20:00</option>
+                              <option value="21:00">21:00</option>
+                              <option value="22:00">22:00</option>
+                              <option value="23:00">23:00</option>
+                            </select>
                           </div>
                         </div>
 
