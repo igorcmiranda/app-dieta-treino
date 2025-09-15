@@ -22,6 +22,25 @@ const initializeDemoUsers = (): User[] => {
       password: 'user123',
       isAdmin: false,
       emailVerified: true,
+      profile: {
+        age: 32,
+        gender: 'masculino',
+        height: 180,
+        weight: 75,
+        activityLevel: 'moderado',
+        goal: 'manter-peso-perder-gordura',
+        preferredMuscleGroups: ['peito', 'braços', 'abdômen', 'pernas']
+      },
+      subscription: {
+        plan: 'premium',
+        status: 'active',
+        startDate: new Date('2025-09-01'),
+        endDate: new Date('2025-12-01'),
+        canDowngrade: true,
+        downgradableDate: new Date('2025-10-01'),
+        dietsUsedThisMonth: 0,
+        workoutsUsedThisMonth: 0
+      },
       createdAt: new Date()
     },
     {
