@@ -43,6 +43,7 @@ import {
   Play,
   Info,
   Calendar,
+  Edit,
   Weight,
   Check,
   Save,
@@ -85,7 +86,8 @@ export function UserDashboard() {
     goal: 'manter-peso-perder-gordura',
     preferredMuscleGroups: [],
     foodRestrictions: [],
-    foodPreferences: []
+    foodPreferences: [],
+    profilePhoto: ''
   });
 
   // Estados da alimentação - NOVO SISTEMA
@@ -102,6 +104,17 @@ export function UserDashboard() {
     quantity: '',
     measurement: 'gramas'
   });
+  const [editingMealIndex, setEditingMealIndex] = useState<number | null>(null);
+  const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
+  const [extractedMeals, setExtractedMeals] = useState<MealEntry[]>([]);
+  const [showExtractedReview, setShowExtractedReview] = useState(false);
+  const [dietChatMessage, setDietChatMessage] = useState('');
+  const [dietChatHistory, setDietChatHistory] = useState<Array<{user: string, ai: string}>>([]);
+  const [isProcessingDietChat, setIsProcessingDietChat] = useState(false);
+  const [aiChatMessage, setAiChatMessage] = useState('');
+  const [aiChatHistory, setAiChatHistory] = useState<Array<{user: string, ai: string}>>([]);
+  const [isProcessingAiChat, setIsProcessingAiChat] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState('');
 
   // Estados das fotos
   const [photos, setPhotos] = useState({
@@ -187,8 +200,23 @@ export function UserDashboard() {
   };
 
   const addMealToList = () => {
-    if (!newMeal.name.trim() || !newMeal.time || newMeal.foods.length === 0) {
-      alert('Por favor, preencha o nome da refeição, horário e adicione pelo menos um alimento');
+    // Validação mais robusta
+    const mealName = newMeal?.name?.trim() || '';
+    const mealTime = newMeal?.time || '';
+    const mealFoods = newMeal?.foods || [];
+    
+    if (!mealName) {
+      alert('Por favor, preencha o nome da refeição');
+      return;
+    }
+    
+    if (!mealTime) {
+      alert('Por favor, selecione o horário da refeição');
+      return;
+    }
+    
+    if (mealFoods.length === 0) {
+      alert('Por favor, adicione pelo menos um alimento');
       return;
     }
 
@@ -223,6 +251,191 @@ export function UserDashboard() {
 
   const removeMealFromList = (index: number) => {
     setCurrentMeals(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const startEditingMeal = (index: number) => {
+    const meal = currentMeals[index];
+    setEditingMealIndex(index);
+    setEditingMeal({ ...meal });
+  };
+
+  const cancelEditingMeal = () => {
+    setEditingMealIndex(null);
+    setEditingMeal(null);
+  };
+
+  const saveEditingMeal = () => {
+    if (!editingMeal || editingMealIndex === null) return;
+    
+    if (!editingMeal.name.trim() || !editingMeal.time || editingMeal.foods.length === 0) {
+      alert('Por favor, preencha o nome da refeição, horário e adicione pelo menos um alimento');
+      return;
+    }
+
+    setCurrentMeals(prev => {
+      const updated = [...prev];
+      updated[editingMealIndex] = editingMeal;
+      return updated;
+    });
+    
+    setEditingMealIndex(null);
+    setEditingMeal(null);
+  };
+
+  // Funções para gerenciar a revisão dos dados extraídos
+  const updateExtractedMeal = (index: number, updatedMeal: MealEntry) => {
+    setExtractedMeals(prev => {
+      const updated = [...prev];
+      updated[index] = updatedMeal;
+      return updated;
+    });
+  };
+
+  const removeExtractedMeal = (index: number) => {
+    setExtractedMeals(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const confirmExtractedMeals = () => {
+    setCurrentMeals(prev => [...prev, ...extractedMeals]);
+    setExtractedMeals([]);
+    setShowExtractedReview(false);
+    alert(`✅ ${extractedMeals.length} refeições foram adicionadas à sua dieta!`);
+  };
+
+  const cancelExtractedMeals = () => {
+    setExtractedMeals([]);
+    setShowExtractedReview(false);
+  };
+
+  // Função para processar chat de edição de dieta
+  const processDietChat = async () => {
+    if (!dietChatMessage.trim() || !currentDietPlan || !currentUser) return;
+
+    // Verificar se usuário tem assinatura ativa
+    if (!hasActiveSubscription(currentUser)) {
+      setSubscriptionFeature('Chat de edição de dieta com IA');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    setIsProcessingDietChat(true);
+    const userMessage = dietChatMessage.trim();
+    setDietChatMessage('');
+
+    try {
+      // Simular processamento de IA (em produção, seria OpenAI API)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Gerar resposta simulada baseada na mensagem do usuário
+      let aiResponse = '';
+      const message = userMessage.toLowerCase();
+
+      if (message.includes('banana') || message.includes('fruta')) {
+        aiResponse = `Perfeito! Vou adicionar banana no seu café da manhã. A banana é rica em potássio e carboidratos naturais, ideal para dar energia. Sua nova refeição ficaria: banana (1 unidade), aveia (40g), leite (250ml) e café. Isso aumentaria suas calorias matinais em aproximadamente 90 calorias.`;
+      } else if (message.includes('café da manhã') || message.includes('cafe da manha')) {
+        aiResponse = `Vou ajustar seu café da manhã conforme solicitado. Com base na sua preferência, podemos incluir aveia (40g) que fornece fibras e energia sustentada, leite (250ml) para proteína e cálcio, e café que pode ser adicionado ao leite. Essa combinação oferece aproximadamente 320 calorias e 15g de proteína.`;
+      } else if (message.includes('proteína') || message.includes('proteina')) {
+        aiResponse = `Vou aumentar a proteína da sua dieta. Posso adicionar whey protein (30g) no café da manhã, aumentar a porção de frango no almoço para 180g, e incluir ovos (2 unidades) no lanche da tarde. Isso adicionaria cerca de 45g de proteína extra ao seu dia.`;
+      } else if (message.includes('calorias') || message.includes('emagrecer')) {
+        aiResponse = `Para ajustar as calorias conforme seu objetivo, vou reduzir as porções de carboidratos em 20% e aumentar ligeiramente as proteínas e vegetais. Isso criará um déficit calórico saudável de aproximadamente 300-400 calorias por dia, ideal para perda de peso sustentável.`;
+      } else {
+        aiResponse = `Entendi sua solicitação! Vou analisar seu plano atual e fazer os ajustes necessários. Baseado no seu perfil e objetivos, recomendo manter o equilíbrio de macronutrientes enquanto adapto às suas preferências alimentares. As mudanças serão aplicadas respeitando suas restrições alimentares já cadastradas.`;
+      }
+
+      // Adicionar ao histórico do chat
+      setDietChatHistory(prev => [...prev, { user: userMessage, ai: aiResponse }]);
+
+    } catch (error) {
+      console.error('Erro no chat de dieta:', error);
+      setDietChatHistory(prev => [...prev, { 
+        user: userMessage, 
+        ai: 'Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente.' 
+      }]);
+    } finally {
+      setIsProcessingDietChat(false);
+    }
+  };
+
+  // Função para processar chat da IA Coach (dúvidas sobre suplementos, hormônios, etc)
+  const processAiChat = async () => {
+    if (!aiChatMessage.trim() || !currentUser) return;
+
+    // Verificar se usuário tem assinatura premium
+    if (!hasActiveSubscription(currentUser) || currentUser.subscription?.plan !== 'premium') {
+      setSubscriptionFeature('Chat com IA Coach para dúvidas sobre suplementos e hormônios');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    setIsProcessingAiChat(true);
+    const userMessage = aiChatMessage.trim();
+    setAiChatMessage('');
+
+    try {
+      // Simular processamento de IA especializada (em produção, seria OpenAI API com prompt específico)
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
+      // Gerar resposta especializada baseada na mensagem do usuário
+      let aiResponse = '';
+      const message = userMessage.toLowerCase();
+
+      if (message.includes('whey') || message.includes('proteína') || message.includes('proteina')) {
+        aiResponse = `Sobre whey protein: É um dos suplementos mais seguros e eficazes. Recomendo 25-30g após o treino ou para completar sua meta diária de proteína. Para seu perfil, 1-2 doses diárias são suficientes. Evite tomar próximo às refeições principais para não atrapalhar a digestão. Brands confiáveis: Growth, Optimum, Max Titanium.`;
+      } else if (message.includes('creatina')) {
+        aiResponse = `Creatina é o suplemento com mais evidência científica para ganho de força e massa muscular. Dose: 3-5g diários, qualquer horário. Não precisa fazer saturação. Tome com água ou carboidrato simples. Pode causar leve retenção hídrica (normal). Beba mais água durante o uso. É segura para uso contínuo.`;
+      } else if (message.includes('testosterona') || message.includes('hormônio') || message.includes('hormonio')) {
+        aiResponse = `⚠️ IMPORTANTE: Hormônios devem ser prescritos apenas por médico endocrinologista após exames detalhados. Nunca se automedique. Alternativas naturais: sono adequado (7-9h), exercícios compostos, dieta rica em zinco e vitamina D, redução do estresse. Se suspeita de baixa testosterona, procure um médico para avaliação completa.`;
+      } else if (message.includes('bcaa') || message.includes('aminoácido') || message.includes('aminoacido')) {
+        aiResponse = `BCAA pode ser útil se você treina em jejum ou tem baixo consumo de proteína. Se já consome whey protein e carnes, o benefício é limitado. Dose: 10-15g antes/durante treino em jejum. Para seu perfil atual, priorizaria whey protein que já contém todos os aminoácidos essenciais.`;
+      } else if (message.includes('pré-treino') || message.includes('pre treino') || message.includes('cafeína') || message.includes('cafeina')) {
+        aiResponse = `Pré-treino pode aumentar performance e foco. Ingredientes-chave: cafeína (200-400mg), beta-alanina, citrulina. Comece com dose menor para avaliar tolerância. Evite após 16h para não atrapalhar o sono. Alternativa natural: café forte (1-2 xícaras) 30min antes do treino.`;
+      } else if (message.includes('gordura') || message.includes('termogênico') || message.includes('termogenico')) {
+        aiResponse = `Termogênicos podem ajudar, mas não são mágicos. Cafeína é o mais eficaz. Priorize déficit calórico através da dieta e exercícios. Efeitos colaterais possíveis: ansiedade, insônia, taquicardia. Se usar, comece devagar e evite próximo ao sono. Mais importante: consistência na dieta e treino.`;
+      } else if (message.includes('vitamina') || message.includes('multivitamínico') || message.includes('multivitaminico')) {
+        aiResponse = `Multivitamínico pode ser útil se há deficiências na dieta. Priorize: Vitamina D (2000-4000 UI), Ômega-3 (1-2g), Magnésio (300-400mg). Faça exames anuais para verificar níveis. Uma dieta variada com frutas, vegetais e proteínas geralmente supre a maioria das necessidades.`;
+      } else {
+        aiResponse = `Entendo sua dúvida sobre suplementação/saúde. Como IA Coach, recomendo sempre consultar profissionais qualificados para orientações específicas. Posso dar informações gerais, mas cada caso é único. Para dúvidas médicas sérias, procure médico. Para suplementação específica, consulte nutricionista esportivo. Sempre priorize dieta e treino antes dos suplementos.`;
+      }
+
+      // Adicionar aviso de responsabilidade
+      aiResponse += `\n\n📌 Lembre-se: Estas são orientações gerais. Sempre consulte profissionais qualificados para orientações personalizadas.`;
+
+      // Adicionar ao histórico do chat
+      setAiChatHistory(prev => [...prev, { user: userMessage, ai: aiResponse }]);
+
+    } catch (error) {
+      console.error('Erro no chat de IA:', error);
+      setAiChatHistory(prev => [...prev, { 
+        user: userMessage, 
+        ai: 'Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente ou consulte um profissional qualificado.' 
+      }]);
+    } finally {
+      setIsProcessingAiChat(false);
+    }
+  };
+
+  // Função para upload da foto de perfil
+  const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione uma imagem válida.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      alert('Imagem muito grande. Máximo 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const photoUrl = e.target?.result as string;
+      setProfilePhoto(photoUrl);
+      setProfile(prev => ({ ...prev, profilePhoto: photoUrl }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePhotoUpload = (position: keyof typeof photos, file: File) => {
@@ -314,10 +527,11 @@ export function UserDashboard() {
         }
       ];
       
-      // Adicionar as refeições extraídas
-      setCurrentMeals(prev => [...prev, ...extractedMeals]);
+      // Armazenar as refeições extraídas para revisão
+      setExtractedMeals(extractedMeals);
+      setShowExtractedReview(true);
       
-      alert(`✅ Análise concluída! ${extractedMeals.length} refeições foram extraídas e adicionadas. Você pode editar ou remover qualquer item se necessário.`);
+      alert(`✅ Análise concluída! ${extractedMeals.length} refeições foram extraídas. Revise e edite os dados antes de adicionar à sua dieta.`);
       
     } catch (error) {
       console.error('Erro ao analisar arquivo:', error);
@@ -573,7 +787,7 @@ export function UserDashboard() {
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               Perfil
@@ -590,6 +804,12 @@ export function UserDashboard() {
               <Target className="w-4 h-4" />
               Resultados
             </TabsTrigger>
+            {currentUser && hasActiveSubscription(currentUser) && (
+              <TabsTrigger value="ai-chat" className="flex items-center gap-2">
+                <Heart className="w-4 h-4" />
+                IA Coach
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Profile Tab */}
@@ -603,6 +823,38 @@ export function UserDashboard() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleProfileSubmit} className="space-y-6">
+                  {/* Foto de Perfil */}
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="relative">
+                      <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden border-4 border-gray-300">
+                        {profilePhoto ? (
+                          <img 
+                            src={profilePhoto} 
+                            alt="Foto de perfil" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <label 
+                        htmlFor="profile-photo-upload"
+                        className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors"
+                      >
+                        <Camera className="w-4 h-4 text-white" />
+                        <input
+                          id="profile-photo-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhotoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-sm text-gray-500">Clique na câmera para alterar sua foto</p>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="age">Idade</Label>
@@ -792,6 +1044,129 @@ export function UserDashboard() {
                             </div>
                           )}
 
+                          {/* Interface de revisão dos dados extraídos */}
+                          {showExtractedReview && extractedMeals.length > 0 && (
+                            <div className="space-y-4 border rounded-lg p-4 bg-amber-50 border-amber-200">
+                              <div className="flex items-center gap-2">
+                                <Info className="w-5 h-5 text-amber-600" />
+                                <h4 className="font-medium text-amber-800">
+                                  Revisar Dados Extraídos ({extractedMeals.length} refeições)
+                                </h4>
+                              </div>
+                              <p className="text-sm text-amber-700">
+                                Verifique e edite os dados extraídos da imagem/PDF antes de adicionar à sua dieta:
+                              </p>
+                              
+                              <div className="space-y-3 max-h-96 overflow-y-auto">
+                                {extractedMeals.map((meal, index) => (
+                                  <div key={index} className="border rounded-lg p-3 bg-white">
+                                    <div className="space-y-3">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                          <Label className="text-xs font-medium text-gray-600">Nome da refeição</Label>
+                                          <Input
+                                            value={meal.name}
+                                            onChange={(e) => updateExtractedMeal(index, { ...meal, name: e.target.value })}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs font-medium text-gray-600">Horário</Label>
+                                          <Input
+                                            type="time"
+                                            value={meal.time}
+                                            onChange={(e) => updateExtractedMeal(index, { ...meal, time: e.target.value })}
+                                          />
+                                        </div>
+                                      </div>
+                                      
+                                      <div>
+                                        <Label className="text-xs font-medium text-gray-600">Alimentos</Label>
+                                        <div className="space-y-2">
+                                          {meal.foods.map((food, foodIndex) => (
+                                            <div key={foodIndex} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
+                                              <Input
+                                                placeholder="Alimento"
+                                                value={food.food}
+                                                onChange={(e) => {
+                                                  const updatedFoods = [...meal.foods];
+                                                  updatedFoods[foodIndex] = { ...food, food: e.target.value };
+                                                  updateExtractedMeal(index, { ...meal, foods: updatedFoods });
+                                                }}
+                                                className="flex-1"
+                                              />
+                                              <Input
+                                                placeholder="Qtd"
+                                                value={food.quantity}
+                                                onChange={(e) => {
+                                                  const updatedFoods = [...meal.foods];
+                                                  updatedFoods[foodIndex] = { ...food, quantity: e.target.value };
+                                                  updateExtractedMeal(index, { ...meal, foods: updatedFoods });
+                                                }}
+                                                className="w-20"
+                                              />
+                                              <Select 
+                                                value={food.measurement} 
+                                                onValueChange={(value: 'colher-sopa' | 'colher-cha' | 'xicara' | 'gramas' | 'ml' | 'unidade') => {
+                                                  const updatedFoods = [...meal.foods];
+                                                  updatedFoods[foodIndex] = { ...food, measurement: value };
+                                                  updateExtractedMeal(index, { ...meal, foods: updatedFoods });
+                                                }}
+                                              >
+                                                <SelectTrigger className="w-32">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="gramas">gramas</SelectItem>
+                                                  <SelectItem value="ml">ml</SelectItem>
+                                                  <SelectItem value="unidade">unidade</SelectItem>
+                                                  <SelectItem value="colher-sopa">col. sopa</SelectItem>
+                                                  <SelectItem value="colher-cha">col. chá</SelectItem>
+                                                  <SelectItem value="xicara">xícara</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                              <Button
+                                                onClick={() => {
+                                                  const updatedFoods = meal.foods.filter((_, i) => i !== foodIndex);
+                                                  updateExtractedMeal(index, { ...meal, foods: updatedFoods });
+                                                }}
+                                                size="sm"
+                                                variant="ghost"
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </Button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex justify-end">
+                                        <Button
+                                          onClick={() => removeExtractedMeal(index)}
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-red-600 hover:text-red-700"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-1" />
+                                          Remover Refeição
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              <div className="flex gap-3 pt-3 border-t">
+                                <Button onClick={confirmExtractedMeals} className="flex-1">
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Adicionar {extractedMeals.length} Refeições
+                                </Button>
+                                <Button onClick={cancelExtractedMeals} variant="outline">
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="text-center">
                             <span className="text-sm text-gray-500">ou</span>
                           </div>
@@ -898,28 +1273,132 @@ export function UserDashboard() {
                           <h4 className="font-medium">Refeições Registradas ({currentMeals.length})</h4>
                           {currentMeals.map((meal, index) => (
                             <div key={index} className="border rounded-lg p-3 bg-white">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-gray-500" />
-                                  <span className="font-medium">{meal.name}</span>
-                                  <Badge variant="outline">{meal.time}</Badge>
+                              {editingMealIndex === index ? (
+                                // Modo de edição
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                      <Label>Nome da refeição</Label>
+                                      <Input
+                                        value={editingMeal?.name || ''}
+                                        onChange={(e) => setEditingMeal(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label>Horário</Label>
+                                      <Input
+                                        type="time"
+                                        value={editingMeal?.time || ''}
+                                        onChange={(e) => setEditingMeal(prev => prev ? { ...prev, time: e.target.value } : null)}
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <Label>Alimentos</Label>
+                                    <div className="space-y-2">
+                                      {editingMeal?.foods.map((food, foodIndex) => (
+                                        <div key={foodIndex} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
+                                          <Input
+                                            placeholder="Alimento"
+                                            value={food.food}
+                                            onChange={(e) => {
+                                              const updatedFoods = [...(editingMeal?.foods || [])];
+                                              updatedFoods[foodIndex] = { ...food, food: e.target.value };
+                                              setEditingMeal(prev => prev ? { ...prev, foods: updatedFoods } : null);
+                                            }}
+                                            className="flex-1"
+                                          />
+                                          <Input
+                                            placeholder="Qtd"
+                                            value={food.quantity}
+                                            onChange={(e) => {
+                                              const updatedFoods = [...(editingMeal?.foods || [])];
+                                              updatedFoods[foodIndex] = { ...food, quantity: e.target.value };
+                                              setEditingMeal(prev => prev ? { ...prev, foods: updatedFoods } : null);
+                                            }}
+                                            className="w-20"
+                                          />
+                                          <Select 
+                                            value={food.measurement} 
+                                            onValueChange={(value: 'colher-sopa' | 'colher-cha' | 'xicara' | 'gramas' | 'ml' | 'unidade') => {
+                                              const updatedFoods = [...(editingMeal?.foods || [])];
+                                              updatedFoods[foodIndex] = { ...food, measurement: value };
+                                              setEditingMeal(prev => prev ? { ...prev, foods: updatedFoods } : null);
+                                            }}
+                                          >
+                                            <SelectTrigger className="w-32">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="gramas">gramas</SelectItem>
+                                              <SelectItem value="ml">ml</SelectItem>
+                                              <SelectItem value="unidade">unidade</SelectItem>
+                                              <SelectItem value="colher-sopa">col. sopa</SelectItem>
+                                              <SelectItem value="colher-cha">col. chá</SelectItem>
+                                              <SelectItem value="xicara">xícara</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <Button
+                                            onClick={() => {
+                                              const updatedFoods = editingMeal?.foods.filter((_, i) => i !== foodIndex) || [];
+                                              setEditingMeal(prev => prev ? { ...prev, foods: updatedFoods } : null);
+                                            }}
+                                            size="sm"
+                                            variant="ghost"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex gap-2">
+                                    <Button onClick={saveEditingMeal} size="sm">
+                                      Salvar
+                                    </Button>
+                                    <Button onClick={cancelEditingMeal} size="sm" variant="outline">
+                                      Cancelar
+                                    </Button>
+                                  </div>
                                 </div>
-                                <Button
-                                  onClick={() => removeMealFromList(index)}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                {meal.foods.map((food, foodIndex) => (
-                                  <span key={foodIndex}>
-                                    {food.food} ({food.quantity} {food.measurement})
-                                    {foodIndex < meal.foods.length - 1 ? ', ' : ''}
-                                  </span>
-                                ))}
-                              </div>
+                              ) : (
+                                // Modo de visualização
+                                <>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="w-4 h-4 text-gray-500" />
+                                      <span className="font-medium">{meal.name}</span>
+                                      <Badge variant="outline">{meal.time}</Badge>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        onClick={() => startEditingMeal(index)}
+                                        size="sm"
+                                        variant="ghost"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        onClick={() => removeMealFromList(index)}
+                                        size="sm"
+                                        variant="ghost"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    {meal.foods.map((food, foodIndex) => (
+                                      <span key={foodIndex}>
+                                        {food.food} ({food.quantity} {food.measurement})
+                                        {foodIndex < meal.foods.length - 1 ? ', ' : ''}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1298,6 +1777,72 @@ export function UserDashboard() {
                             </div>
                           ))}
                         </div>
+
+                        {/* Chat de Edição de Dieta */}
+                        <Separator />
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <Target className="w-5 h-5 text-blue-600" />
+                            <h3 className="text-lg font-semibold">Editar Dieta com IA</h3>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Faça perguntas ou solicite mudanças na sua dieta. Exemplo: "café da manhã eu costumo comer banana, aveia e tomar 250ml de leite com café, como ficaria minha dieta colocando isso no café da manhã?"
+                          </p>
+
+                          {/* Histórico do Chat */}
+                          {dietChatHistory.length > 0 && (
+                            <div className="space-y-3 max-h-80 overflow-y-auto border rounded-lg p-4 bg-gray-50">
+                              {dietChatHistory.map((chat, index) => (
+                                <div key={index} className="space-y-2">
+                                  <div className="flex items-start gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                                      <User className="w-3 h-3 text-blue-600" />
+                                    </div>
+                                    <div className="flex-1 bg-white rounded-lg p-3 border">
+                                      <p className="text-sm">{chat.user}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                                      <Target className="w-3 h-3 text-green-600" />
+                                    </div>
+                                    <div className="flex-1 bg-green-50 rounded-lg p-3 border border-green-200">
+                                      <p className="text-sm">{chat.ai}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Campo de Entrada do Chat */}
+                          <div className="flex gap-2">
+                            <Textarea
+                              placeholder="Ex: cafe da manha eu costumo comer banana, aveia e tomar 250ml de leite com cafe, como ficaria minha dieta colocando isso no cafe da manha?"
+                              value={dietChatMessage}
+                              onChange={(e) => setDietChatMessage(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  processDietChat();
+                                }
+                              }}
+                              className="flex-1 min-h-20"
+                              disabled={isProcessingDietChat}
+                            />
+                            <Button 
+                              onClick={processDietChat}
+                              disabled={!dietChatMessage.trim() || isProcessingDietChat}
+                              className="px-6"
+                            >
+                              {isProcessingDietChat ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                'Enviar'
+                              )}
+                            </Button>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   ) : (
@@ -1441,6 +1986,135 @@ export function UserDashboard() {
                 </TabsContent>
               </Tabs>
             </div>
+          </TabsContent>
+
+          {/* AI Coach Tab - Premium Feature */}
+          <TabsContent value="ai-chat">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  IA Coach - Tire suas dúvidas
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  Funcionalidade premium: faça perguntas sobre suplementos, ciclos de hormônios, nutrição avançada e muito mais
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Aviso importante */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-amber-800">⚠️ Importante</h4>
+                      <p className="text-sm text-amber-700">
+                        As informações fornecidas são para fins educacionais. Para questões médicas específicas, 
+                        consulte sempre um profissional qualificado (médico, nutricionista, educador físico).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sugestões de perguntas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h5 className="font-medium text-sm mb-2">💊 Suplementação</h5>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      <li>• "Devo tomar whey protein?"</li>
+                      <li>• "Como usar creatina corretamente?"</li>
+                      <li>• "Vale a pena tomar BCAA?"</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h5 className="font-medium text-sm mb-2">🧬 Hormônios</h5>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      <li>• "Como aumentar testosterona natural?"</li>
+                      <li>• "Sinais de baixa testosterona"</li>
+                      <li>• "Quando procurar endocrinologista?"</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h5 className="font-medium text-sm mb-2">🔥 Performance</h5>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      <li>• "Pré-treino vale a pena?"</li>
+                      <li>• "Como quebrar platô no treino?"</li>
+                      <li>• "Termogênicos funcionam?"</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h5 className="font-medium text-sm mb-2">🥗 Nutrição</h5>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      <li>• "Preciso de multivitamínico?"</li>
+                      <li>• "Ômega-3 é necessário?"</li>
+                      <li>• "Como calcular macros?"</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Histórico do Chat */}
+                {aiChatHistory.length > 0 && (
+                  <div className="space-y-4 max-h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50">
+                    {aiChatHistory.map((chat, index) => (
+                      <div key={index} className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1 bg-white rounded-lg p-3 border shadow-sm">
+                            <p className="text-sm font-medium text-blue-700 mb-1">Você perguntou:</p>
+                            <p className="text-sm">{chat.user}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <Heart className="w-4 h-4 text-red-600" />
+                          </div>
+                          <div className="flex-1 bg-red-50 rounded-lg p-3 border border-red-200 shadow-sm">
+                            <p className="text-sm font-medium text-red-700 mb-1">IA Coach respondeu:</p>
+                            <p className="text-sm whitespace-pre-line">{chat.ai}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Campo de Entrada do Chat */}
+                <div className="space-y-3">
+                  <Label htmlFor="ai-chat-input">Faça sua pergunta para a IA Coach:</Label>
+                  <div className="flex gap-3">
+                    <Textarea
+                      id="ai-chat-input"
+                      placeholder="Ex: Devo tomar creatina? Como funciona e qual a dosagem recomendada?"
+                      value={aiChatMessage}
+                      onChange={(e) => setAiChatMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          processAiChat();
+                        }
+                      }}
+                      className="flex-1 min-h-24"
+                      disabled={isProcessingAiChat}
+                    />
+                    <Button 
+                      onClick={processAiChat}
+                      disabled={!aiChatMessage.trim() || isProcessingAiChat}
+                      className="px-6 self-end"
+                    >
+                      {isProcessingAiChat ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Heart className="w-4 h-4 mr-2" />
+                          Perguntar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -25,6 +25,7 @@ export interface UserProfile {
   // Novas preferências alimentares
   foodRestrictions: string[]; // Alimentos que não come
   foodPreferences: string[]; // Alimentos que gosta de comer
+  profilePhoto?: string; // Foto de perfil em base64
 }
 
 export interface UserSubscription {
