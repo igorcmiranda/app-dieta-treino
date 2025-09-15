@@ -1289,7 +1289,14 @@ export function UserDashboard() {
                               id="meal-time"
                               type="time"
                               value={newMeal.time}
-                              onChange={(e) => setNewMeal(prev => ({ ...prev, time: e.target.value }))}
+                              onChange={(e) => {
+                                const timeValue = e.target.value;
+                                console.log('Valor do time capturado:', timeValue);
+                                setNewMeal(prev => ({ 
+                                  ...prev, 
+                                  time: timeValue 
+                                }));
+                              }}
                             />
                           </div>
                         </div>
