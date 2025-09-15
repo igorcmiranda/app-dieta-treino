@@ -414,8 +414,13 @@ export function UserDashboard() {
         // Forçar re-renderização para mostrar mudanças imediatamente
         console.log('Plano atualizado salvo com sucesso:', updatedPlan);
         
+        // Forçar atualização da UI mudando para aba dieta
+        setTimeout(() => {
+          setActiveTab('diet');
+        }, 1000);
+        
         // Adicionar notificação de sucesso
-        aiResponse += '\n\n✨ As mudanças já estão visíveis na sua aba Dieta! Clique na aba Dieta para ver as atualizações.';
+        aiResponse += '\n\n✨ SUCESSO! Plano atualizado e mudanças aplicadas. Verificando aba Dieta automaticamente...';
       } catch (error) {
         console.error('Erro ao salvar plano atualizado:', error);
         aiResponse += '\n⚠️ Houve um problema ao salvar as mudanças. Tente novamente.';
@@ -483,6 +488,12 @@ export function UserDashboard() {
         responseContent = `**Sobre Sono e Recuperação:**\n7-9h de sono por noite são fundamentais. Qualidade do sono afeta hormônios, recuperação muscular e performance. Evite telas 1h antes de dormir. Ambiente escuro e fresco. Rotina consistente de sono. Recuperação ativa pode incluir caminhadas leves.`;
       } else if (message.includes('água') || message.includes('hidratação') || message.includes('hidratacao')) {
         responseContent = `**Sobre Hidratação:**\n35-40ml por kg de peso corporal por dia. Aumente durante treinos e dias quentes. Urina clara indica boa hidratação. Distribua o consumo ao longo do dia. Água é suficiente para treinos até 1h. Para exercícios mais longos, considere isotônicos.`;
+      } else if (message.includes('oxandrolona') || message.includes('stanozolol') || message.includes('anabolizante') || message.includes('esteroide')) {
+        responseContent = `**Sobre Anabolizantes/Esteroides:**\nOxandrolona e Stanozolol são esteroides anabolizantes controlados. Ambos têm efeitos colaterais graves: problemas hepáticos, cardiovasculares, hormonais. Stanozolol é mais hepatotóxico. Oxandrolona considerada "mais leve" mas ainda perigosa. USO ILEGAL sem prescrição médica. Alternativas naturais: treino intenso, dieta adequada, descanso, creatina, whey protein.`;
+      } else if (message.includes('ciclo') || message.includes('tpc') || message.includes('post-ciclo')) {
+        responseContent = `**Sobre Ciclos e TPC:**\nCiclos de esteroides requerem acompanhamento médico rigoroso. TPC (Terapia Pós-Ciclo) é fundamental para recuperar produção hormonal natural. Sem supervisão médica, riscos incluem: infertilidade, ginecomastia, depressão, problemas cardiovasculares. Priorize métodos naturais: treino consistente, alimentação balanceada, suplementação básica (creatina, whey).`;
+      } else if (message.includes('gh') || message.includes('hormônio do crescimento') || message.includes('hormonio do crescimento')) {
+        responseContent = `**Sobre Hormônio do Crescimento (GH):**\nUso apenas com prescrição médica para deficiências comprovadas. Efeitos colaterais: diabetes, problemas articulares, crescimento excessivo de órgãos. Para otimizar GH natural: sono adequado (7-9h), exercícios intensos, jejum intermitente, redução do açúcar. Suplementos naturais: arginina, glicina, GABA podem ajudar marginalmente.`;
       } else {
         // Responder QUALQUER tipo de pergunta como pesquisador
         responseContent = `Como pesquisador fitness atuando para fins ilustrativos, vou fornecer informações baseadas em estudos e literatura disponível sobre sua pergunta. Atuo como fonte de conhecimento geral para ajudá-lo a entender melhor o tema. Cada situação é única e sempre recomendo consultar profissionais qualificados (médicos, nutricionistas, educadores físicos) para orientações personalizadas e adequadas ao seu caso específico.`;
@@ -1294,19 +1305,22 @@ export function UserDashboard() {
                             />
                           </div>
                           <div>
-                            <Label htmlFor="meal-time">Horário</Label>
+                            <Label htmlFor="meal-time">Horário (24h)</Label>
                             <Input
                               id="meal-time"
                               type="time"
                               value={newMeal.time}
                               onChange={(e) => {
                                 const timeValue = e.target.value;
-                                console.log('Valor do time capturado:', timeValue);
+                                console.log('✅ Horário capturado:', timeValue);
                                 setNewMeal(prev => ({ 
                                   ...prev, 
                                   time: timeValue 
                                 }));
+                                console.log('✅ Estado atualizado newMeal.time:', timeValue);
                               }}
+                              placeholder="Ex: 14:30"
+                              required
                             />
                           </div>
                         </div>
