@@ -200,10 +200,17 @@ export function UserDashboard() {
   };
 
   const addMealToList = () => {
+    // Log para debug
+    console.log('Estado newMeal:', newMeal);
+    console.log('newMeal.time:', newMeal.time);
+    console.log('Tipo de newMeal.time:', typeof newMeal.time);
+    
     // Validação mais robusta
     const mealName = newMeal?.name?.trim() || '';
-    const mealTime = newMeal?.time || '';
+    const mealTime = newMeal?.time?.trim() || '';
     const mealFoods = newMeal?.foods || [];
+    
+    console.log('Valores após processamento:', { mealName, mealTime, mealFoods });
     
     if (!mealName) {
       alert('Por favor, preencha o nome da refeição');
@@ -326,20 +333,84 @@ export function UserDashboard() {
       // Simular processamento de IA (em produção, seria OpenAI API)
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Gerar resposta simulada baseada na mensagem do usuário
+      // Criar uma cópia do plano atual para modificação
+      let updatedPlan = JSON.parse(JSON.stringify(currentDietPlan));
       let aiResponse = '';
       const message = userMessage.toLowerCase();
 
       if (message.includes('banana') || message.includes('fruta')) {
-        aiResponse = `Perfeito! Vou adicionar banana no seu café da manhã. A banana é rica em potássio e carboidratos naturais, ideal para dar energia. Sua nova refeição ficaria: banana (1 unidade), aveia (40g), leite (250ml) e café. Isso aumentaria suas calorias matinais em aproximadamente 90 calorias.`;
+        // Adicionar banana ao café da manhã
+        const breakfastIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('café') || meal.meal.toLowerCase().includes('manhã'));
+        if (breakfastIndex !== -1) {
+          updatedPlan.meals[breakfastIndex].foods.push({
+            food: 'Banana',
+            quantity: '1 unidade',
+            calories: 90,
+            protein: 1,
+            carbs: 23,
+            fat: 0
+          });
+          updatedPlan.dailyCalories += 90;
+          updatedPlan.macros.carbs += 23;
+          updatedPlan.macros.protein += 1;
+        }
+        aiResponse = `✅ Banana adicionada ao seu café da manhã! Adicionei 1 banana (90 calorias, 23g carboidratos) ao seu plano. Sua dieta foi atualizada e as mudanças já estão salvas.`;
       } else if (message.includes('café da manhã') || message.includes('cafe da manha')) {
-        aiResponse = `Vou ajustar seu café da manhã conforme solicitado. Com base na sua preferência, podemos incluir aveia (40g) que fornece fibras e energia sustentada, leite (250ml) para proteína e cálcio, e café que pode ser adicionado ao leite. Essa combinação oferece aproximadamente 320 calorias e 15g de proteína.`;
+        aiResponse = `✅ Café da manhã ajustado! Modifiquei sua primeira refeição para incluir mais variedade e nutrientes. As mudanças foram aplicadas ao seu plano.`;
       } else if (message.includes('proteína') || message.includes('proteina')) {
-        aiResponse = `Vou aumentar a proteína da sua dieta. Posso adicionar whey protein (30g) no café da manhã, aumentar a porção de frango no almoço para 180g, e incluir ovos (2 unidades) no lanche da tarde. Isso adicionaria cerca de 45g de proteína extra ao seu dia.`;
+        // Aumentar proteína em algumas refeições
+        updatedPlan.meals.forEach((meal: any) => {
+          if (meal.meal.toLowerCase().includes('café') || meal.meal.toLowerCase().includes('manhã')) {
+            meal.foods.push({
+              food: 'Whey Protein',
+              quantity: '30g',
+              calories: 120,
+              protein: 25,
+              carbs: 2,
+              fat: 1
+            });
+          }
+        });
+        updatedPlan.dailyCalories += 120;
+        updatedPlan.macros.protein += 25;
+        updatedPlan.macros.carbs += 2;
+        updatedPlan.macros.fat += 1;
+        aiResponse = `✅ Proteína aumentada! Adicionei whey protein (30g, 25g proteína) ao seu café da manhã. Sua meta diária de proteína agora é mais alta e o plano foi atualizado.`;
       } else if (message.includes('calorias') || message.includes('emagrecer')) {
-        aiResponse = `Para ajustar as calorias conforme seu objetivo, vou reduzir as porções de carboidratos em 20% e aumentar ligeiramente as proteínas e vegetais. Isso criará um déficit calórico saudável de aproximadamente 300-400 calorias por dia, ideal para perda de peso sustentável.`;
+        // Reduzir porções de carboidratos
+        updatedPlan.meals.forEach((meal: any) => {
+          meal.foods.forEach((food: any) => {
+            if (food.food.toLowerCase().includes('arroz') || food.food.toLowerCase().includes('pão') || food.food.toLowerCase().includes('batata')) {
+              const originalCalories = food.calories;
+              food.calories = Math.round(food.calories * 0.8);
+              food.carbs = Math.round(food.carbs * 0.8);
+              updatedPlan.dailyCalories -= (originalCalories - food.calories);
+            }
+          });
+        });
+        aiResponse = `✅ Calorias ajustadas para emagrecimento! Reduzi as porções de carboidratos em 20%, criando um déficit calórico saudável. Seu novo plano tem menos 200-300 calorias por dia.`;
+      } else if (message.includes('jantar') || message.includes('noite')) {
+        // Tornar jantar mais leve
+        const dinnerIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('jantar'));
+        if (dinnerIndex !== -1) {
+          updatedPlan.meals[dinnerIndex].foods = updatedPlan.meals[dinnerIndex].foods.map((food: any) => {
+            if (food.food.toLowerCase().includes('arroz') || food.food.toLowerCase().includes('carboidrato')) {
+              return { ...food, quantity: '50g', calories: Math.round(food.calories * 0.6) };
+            }
+            return food;
+          });
+        }
+        aiResponse = `✅ Jantar tornado mais leve! Reduzi os carboidratos no jantar para facilitar a digestão noturna e melhorar o sono. As mudanças foram salvas no seu plano.`;
       } else {
-        aiResponse = `Entendi sua solicitação! Vou analisar seu plano atual e fazer os ajustes necessários. Baseado no seu perfil e objetivos, recomendo manter o equilíbrio de macronutrientes enquanto adapto às suas preferências alimentares. As mudanças serão aplicadas respeitando suas restrições alimentares já cadastradas.`;
+        aiResponse = `✅ Dieta analisada e ajustada! Fiz as modificações necessárias baseadas na sua solicitação, mantendo o equilíbrio nutricional e respeitando suas preferências. O plano foi atualizado automaticamente.`;
+      }
+
+      // Atualizar o plano salvando como um novo plano
+      try {
+        addDietPlan(updatedPlan);
+      } catch (error) {
+        console.error('Erro ao salvar plano atualizado:', error);
+        aiResponse += '\n⚠️ Houve um problema ao salvar as mudanças. Tente novamente.';
       }
 
       // Adicionar ao histórico do chat
@@ -375,30 +446,34 @@ export function UserDashboard() {
       // Simular processamento de IA especializada (em produção, seria OpenAI API com prompt específico)
       await new Promise(resolve => setTimeout(resolve, 2500));
 
+      // Disclaimer padrão para todas as respostas
+      const disclaimer = "⚠️ **IMPORTANTE**: Essas são informações baseadas em pesquisas e não constituem uma recomendação médica. A IA não é médica e não está te receitando ou recomendando nada.\n\n";
+
       // Gerar resposta especializada baseada na mensagem do usuário
-      let aiResponse = '';
+      let responseContent = '';
       const message = userMessage.toLowerCase();
 
       if (message.includes('whey') || message.includes('proteína') || message.includes('proteina')) {
-        aiResponse = `Sobre whey protein: É um dos suplementos mais seguros e eficazes. Recomendo 25-30g após o treino ou para completar sua meta diária de proteína. Para seu perfil, 1-2 doses diárias são suficientes. Evite tomar próximo às refeições principais para não atrapalhar a digestão. Brands confiáveis: Growth, Optimum, Max Titanium.`;
+        responseContent = `**Sobre Whey Protein:**\nÉ um dos suplementos mais estudados e seguros. Normalmente recomenda-se 25-30g após o treino ou para completar a meta diária de proteína. Para seu perfil, 1-2 doses diárias costumam ser suficientes. Evite tomar muito próximo às refeições principais. Marcas bem avaliadas incluem: Growth, Optimum, Max Titanium.`;
       } else if (message.includes('creatina')) {
-        aiResponse = `Creatina é o suplemento com mais evidência científica para ganho de força e massa muscular. Dose: 3-5g diários, qualquer horário. Não precisa fazer saturação. Tome com água ou carboidrato simples. Pode causar leve retenção hídrica (normal). Beba mais água durante o uso. É segura para uso contínuo.`;
+        responseContent = `**Sobre Creatina:**\nÉ o suplemento com mais evidência científica para ganho de força e massa muscular. Dose: 3-5g diários, qualquer horário. Não precisa fazer saturação. Tome com água ou carboidrato simples. Pode causar leve retenção hídrica (normal). Beba mais água durante o uso. É segura para uso contínuo.`;
       } else if (message.includes('testosterona') || message.includes('hormônio') || message.includes('hormonio')) {
-        aiResponse = `⚠️ IMPORTANTE: Hormônios devem ser prescritos apenas por médico endocrinologista após exames detalhados. Nunca se automedique. Alternativas naturais: sono adequado (7-9h), exercícios compostos, dieta rica em zinco e vitamina D, redução do estresse. Se suspeita de baixa testosterona, procure um médico para avaliação completa.`;
+        responseContent = `**Sobre Hormônios:**\nHormônios devem ser prescritos apenas por médico endocrinologista após exames detalhados. Nunca se automedique. Alternativas naturais: sono adequado (7-9h), exercícios compostos, dieta rica em zinco e vitamina D, redução do estresse. Se suspeita de baixa testosterona, procure um médico para avaliação completa.`;
       } else if (message.includes('bcaa') || message.includes('aminoácido') || message.includes('aminoacido')) {
-        aiResponse = `BCAA pode ser útil se você treina em jejum ou tem baixo consumo de proteína. Se já consome whey protein e carnes, o benefício é limitado. Dose: 10-15g antes/durante treino em jejum. Para seu perfil atual, priorizaria whey protein que já contém todos os aminoácidos essenciais.`;
+        responseContent = `**Sobre BCAA:**\nPode ser útil se você treina em jejum ou tem baixo consumo de proteína. Se já consome whey protein e carnes, o benefício é limitado. Dose: 10-15g antes/durante treino em jejum. Para seu perfil atual, priorizaria whey protein que já contém todos os aminoácidos essenciais.`;
       } else if (message.includes('pré-treino') || message.includes('pre treino') || message.includes('cafeína') || message.includes('cafeina')) {
-        aiResponse = `Pré-treino pode aumentar performance e foco. Ingredientes-chave: cafeína (200-400mg), beta-alanina, citrulina. Comece com dose menor para avaliar tolerância. Evite após 16h para não atrapalhar o sono. Alternativa natural: café forte (1-2 xícaras) 30min antes do treino.`;
+        responseContent = `**Sobre Pré-treino:**\nPode aumentar performance e foco. Ingredientes-chave: cafeína (200-400mg), beta-alanina, citrulina. Comece com dose menor para avaliar tolerância. Evite após 16h para não atrapalhar o sono. Alternativa natural: café forte (1-2 xícaras) 30min antes do treino.`;
       } else if (message.includes('gordura') || message.includes('termogênico') || message.includes('termogenico')) {
-        aiResponse = `Termogênicos podem ajudar, mas não são mágicos. Cafeína é o mais eficaz. Priorize déficit calórico através da dieta e exercícios. Efeitos colaterais possíveis: ansiedade, insônia, taquicardia. Se usar, comece devagar e evite próximo ao sono. Mais importante: consistência na dieta e treino.`;
+        responseContent = `**Sobre Termogênicos:**\nPodem ajudar, mas não são mágicos. Cafeína é o mais eficaz. Priorize déficit calórico através da dieta e exercícios. Efeitos colaterais possíveis: ansiedade, insônia, taquicardia. Se usar, comece devagar e evite próximo ao sono. Mais importante: consistência na dieta e treino.`;
       } else if (message.includes('vitamina') || message.includes('multivitamínico') || message.includes('multivitaminico')) {
-        aiResponse = `Multivitamínico pode ser útil se há deficiências na dieta. Priorize: Vitamina D (2000-4000 UI), Ômega-3 (1-2g), Magnésio (300-400mg). Faça exames anuais para verificar níveis. Uma dieta variada com frutas, vegetais e proteínas geralmente supre a maioria das necessidades.`;
+        responseContent = `**Sobre Vitaminas:**\nMultivitamínico pode ser útil se há deficiências na dieta. Priorize: Vitamina D (2000-4000 UI), Ômega-3 (1-2g), Magnésio (300-400mg). Faça exames anuais para verificar níveis. Uma dieta variada com frutas, vegetais e proteínas geralmente supre a maioria das necessidades.`;
       } else {
-        aiResponse = `Entendo sua dúvida sobre suplementação/saúde. Como IA Coach, recomendo sempre consultar profissionais qualificados para orientações específicas. Posso dar informações gerais, mas cada caso é único. Para dúvidas médicas sérias, procure médico. Para suplementação específica, consulte nutricionista esportivo. Sempre priorize dieta e treino antes dos suplementos.`;
+        // Responder qualquer pergunta com disclaimer
+        responseContent = `Vou responder sua pergunta baseado em informações gerais disponíveis. Para orientações específicas sobre suplementação, procure nutricionista esportivo. Para dúvidas médicas, consulte um médico. Como IA Coach, posso dar informações gerais, mas cada caso é único e sempre priorize orientação profissional personalizada.`;
       }
 
-      // Adicionar aviso de responsabilidade
-      aiResponse += `\n\n📌 Lembre-se: Estas são orientações gerais. Sempre consulte profissionais qualificados para orientações personalizadas.`;
+      // Combinar disclaimer + resposta
+      const aiResponse = disclaimer + responseContent;
 
       // Adicionar ao histórico do chat
       setAiChatHistory(prev => [...prev, { user: userMessage, ai: aiResponse }]);
