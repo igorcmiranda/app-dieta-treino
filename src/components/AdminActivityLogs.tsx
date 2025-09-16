@@ -37,22 +37,25 @@ import {
   Plus,
   Copy,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface AdminActivityLogsProps {
-  // Props se necessário
+  selectedUserId?: string;
+  selectedUserName?: string;
+  onClearUserFilter?: () => void;
 }
 
-export function AdminActivityLogs({}: AdminActivityLogsProps) {
+export function AdminActivityLogs({ selectedUserId, selectedUserName, onClearUserFilter }: AdminActivityLogsProps) {
   const { getActivityLogs, getLogStats } = useActivityLogger();
   const { users } = useUsers();
   
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<string>('all');
+  const [selectedUser, setSelectedUser] = useState<string>(selectedUserId || 'all');
   const [selectedAction, setSelectedAction] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
@@ -104,6 +107,14 @@ export function AdminActivityLogs({}: AdminActivityLogsProps) {
       setIsLoading(false);
     }
   };
+
+  // Definir usuário selecionado quando prop mudou
+  useEffect(() => {
+    if (selectedUserId) {
+      setSelectedUser(selectedUserId);
+      setCurrentPage(1);
+    }
+  }, [selectedUserId]);
 
   // Recarregar logs quando filtros mudarem
   useEffect(() => {
@@ -184,6 +195,31 @@ export function AdminActivityLogs({}: AdminActivityLogsProps) {
           Logs de Atividade
         </h2>
         
+        {/* Filtro de usuário específico */}
+        {selectedUserId && selectedUserName && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <User className="w-5 h-5 text-blue-600 mr-2" />
+                <span className="font-medium text-blue-900">
+                  Visualizando logs de: <strong>{selectedUserName}</strong>
+                </span>
+              </div>
+              {onClearUserFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClearUserFilter}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Limpar filtro
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Estatísticas rápidas */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -688,7 +724,7 @@ export function AdminActivityLogs({}: AdminActivityLogsProps) {
                           {getActionIcon(action)}
                           <span className="ml-2 font-medium">{action}</span>
                         </div>
-                        <Badge variant="outline">{count}</Badge>
+                        <Badge variant="outline">{count as number}</Badge>
                       </div>
                     ))
                   }

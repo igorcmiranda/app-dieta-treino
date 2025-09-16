@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarContent, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useUsers } from '@/lib/hooks';
 import { User } from '@/lib/types';
 import { 
@@ -31,16 +31,18 @@ import {
   Heart,
   Eye,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface AdminUserManagementProps {
-  // Props se necessário
+  onViewUserLogs?: (userId: string, userName: string) => void;
+  onUpgradeUser?: (userId: string, currentPlan: string) => void;
 }
 
-export function AdminUserManagement({}: AdminUserManagementProps) {
+export function AdminUserManagement({ onViewUserLogs, onUpgradeUser }: AdminUserManagementProps) {
   const { users } = useUsers();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<string>('all');
@@ -133,6 +135,34 @@ export function AdminUserManagement({}: AdminUserManagementProps) {
     setExpandedUser(expandedUser === userId ? null : userId);
   };
 
+  // Função para lidar com visualização de logs do usuário
+  const handleViewUserLogs = (userId: string, userName: string) => {
+    if (onViewUserLogs) {
+      onViewUserLogs(userId, userName);
+    }
+  };
+
+  // Função para lidar com upgrade de usuário
+  const handleUpgradeUser = (userId: string, currentPlan: string) => {
+    if (onUpgradeUser) {
+      onUpgradeUser(userId, currentPlan);
+    }
+  };
+
+  // Verificar se usuário pode fazer upgrade
+  const canUpgrade = (plan?: string) => {
+    return plan === 'starter' || plan === 'standard';
+  };
+
+  // Obter próximo plano
+  const getNextPlan = (currentPlan: string) => {
+    switch (currentPlan) {
+      case 'starter': return 'standard';
+      case 'standard': return 'premium';
+      default: return null;
+    }
+  };
+
   const renderUserCard = (user: User) => (
     <Card key={user.id} className="relative hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -157,9 +187,22 @@ export function AdminUserManagement({}: AdminUserManagementProps) {
               </Badge>
             )}
             {user.subscription && (
-              <Badge className={getPlanColor(user.subscription.plan)}>
-                {user.subscription.plan}
-              </Badge>
+              <div className="flex items-center space-x-1">
+                <Badge className={getPlanColor(user.subscription.plan)}>
+                  {user.subscription.plan}
+                </Badge>
+                {canUpgrade(user.subscription.plan) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => handleUpgradeUser(user.id, user.subscription?.plan || '')}
+                  >
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    Upgrade
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -227,25 +270,37 @@ export function AdminUserManagement({}: AdminUserManagementProps) {
             </>
           )}
 
-          {/* Botão para expandir detalhes */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => toggleUserExpanded(user.id)}
-            className="w-full mt-2"
-          >
-            {expandedUser === user.id ? (
-              <>
-                <ChevronUp className="w-4 h-4 mr-1" />
-                Menos detalhes
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4 mr-1" />
-                Ver detalhes
-              </>
-            )}
-          </Button>
+          {/* Botões de ação */}
+          <div className="flex items-center justify-between pt-2">
+            {/* Botão para expandir detalhes */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleUserExpanded(user.id)}
+            >
+              {expandedUser === user.id ? (
+                <>
+                  <ChevronUp className="w-4 h-4 mr-1" />
+                  Menos detalhes
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 mr-1" />
+                  Ver detalhes
+                </>
+              )}
+            </Button>
+
+            {/* Botão para ver logs */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleViewUserLogs(user.id, user.name)}
+            >
+              <FileText className="w-4 h-4 mr-1" />
+              Ver Logs
+            </Button>
+          </div>
 
           {/* Detalhes expandidos */}
           {expandedUser === user.id && user.profile && (

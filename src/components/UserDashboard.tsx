@@ -88,6 +88,10 @@ export function UserDashboard() {
   // Estados para edição de perfil/billing
   const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   
+  // Estados para painel administrativo
+  const [selectedUserForLogs, setSelectedUserForLogs] = useState<{id: string, name: string} | null>(null);
+  const [adminActiveTab, setAdminActiveTab] = useState('users');
+  
   // Estados do perfil
   const [profile, setProfile] = useState<Partial<UserProfile>>({
     age: 0,
@@ -1152,6 +1156,121 @@ export function UserDashboard() {
     setSubscriptionFeature('');
     // Atualizar usuário com nova assinatura seria feito aqui
     alert('✅ Pagamento realizado com sucesso! Agora você pode usar todas as funcionalidades.');
+  };
+
+  // Função para visualizar logs de usuário específico
+  const handleViewUserLogs = (userId: string, userName: string) => {
+    setSelectedUserForLogs({ id: userId, name: userName });
+    setAdminActiveTab('logs');
+    
+    // Log da ação administrativa
+    if (currentUser?.isAdmin) {
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        action: 'ADMIN_VIEW_USER_LOGS',
+        details: `Admin visualizou logs do usuário: ${userName} (${userId})`,
+        status: 'success',
+        metadata: { targetUserId: userId, targetUserName: userName },
+        ip: ''
+      });
+    }
+  };
+
+  // Função para fazer upgrade de usuário
+  const handleUpgradeUser = async (userId: string, currentPlan: string) => {
+    try {
+      // Validação de permissão administrativa
+      if (!currentUser?.isAdmin) {
+        alert('❌ Acesso negado. Apenas administradores podem fazer upgrade de usuários.');
+        return;
+      }
+      
+      // Determinar próximo plano
+      let nextPlan: 'starter' | 'standard' | 'premium' = 'premium';
+      let featureText = 'Upgrade de plano';
+      
+      if (currentPlan === 'starter') {
+        nextPlan = 'standard';
+        featureText = 'Upgrade para Standard - Mais dietas e treinos por mês + Chat IA';
+      } else if (currentPlan === 'standard') {
+        nextPlan = 'premium';
+        featureText = 'Upgrade para Premium - Acesso ilimitado a todas funcionalidades';
+      } else {
+        alert('ℹ️ Usuário já possui o plano máximo disponível.');
+        return;
+      }
+      
+      // Confirmar ação com o administrador
+      const confirmUpgrade = confirm(
+        `🔄 Confirmar upgrade do usuário para plano ${nextPlan.toUpperCase()}?\n\n` +
+        `Plano atual: ${currentPlan}\n` +
+        `Novo plano: ${nextPlan}\n\n` +
+        `Esta ação abrirá a tela de assinatura para processar o upgrade.`
+      );
+      
+      if (!confirmUpgrade) {
+        return;
+      }
+      
+      // Abrir tela de assinatura com contexto de upgrade administrativo
+      setSelectedPlan(nextPlan);
+      setSubscriptionFeature(`[ADMIN UPGRADE] ${featureText}`);
+      setShowSubscriptionPlans(true);
+      
+      // Log da ação de upgrade iniciada
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        action: 'ADMIN_UPGRADE_INITIATED',
+        details: `Admin iniciou upgrade de usuário do plano ${currentPlan} para ${nextPlan}`,
+        status: 'success',
+        metadata: { targetUserId: userId, fromPlan: currentPlan, toPlan: nextPlan },
+        ip: ''
+      });
+      
+      // Notificar sucesso da iniciação
+      alert(`✅ Processo de upgrade iniciado!\n\nUsuário será atualizado para o plano ${nextPlan} após confirmação.`);
+      
+    } catch (error) {
+      console.error('❌ Erro ao processar upgrade:', error);
+      alert('❌ Erro ao processar upgrade. Tente novamente.');
+      
+      // Log do erro
+      if (currentUser?.isAdmin) {
+        logActivity({
+          userId: currentUser.id,
+          userName: currentUser.name,
+          userEmail: currentUser.email,
+          action: 'ADMIN_UPGRADE_FAILED',
+          details: `Erro ao processar upgrade: ${error}`,
+          status: 'error',
+          metadata: { targetUserId: userId, currentPlan, error: String(error) },
+          ip: ''
+        });
+      }
+    }
+  };
+
+  // Função para limpar filtro de usuário nos logs
+  const handleClearUserFilter = () => {
+    setSelectedUserForLogs(null);
+    
+    // Log opcional da ação de limpar filtro
+    if (currentUser?.isAdmin) {
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        action: 'ADMIN_CLEAR_USER_FILTER',
+        details: 'Admin limpou filtro de usuário nos logs',
+        status: 'success',
+        metadata: {},
+        ip: ''
+      });
+    }
   };
 
   // Função para salvar dados de perfil/billing - SEGURA
@@ -2864,7 +2983,7 @@ export function UserDashboard() {
           {/* Admin Tab - Apenas para administradores */}
           {currentUser?.isAdmin && (
             <TabsContent value="admin">
-              <Tabs defaultValue="users" className="space-y-6">
+              <Tabs value={adminActiveTab} onValueChange={setAdminActiveTab} className="space-y-6">
                 <div className="w-full">
                   <TabsList className="grid grid-cols-2 gap-1 p-1 w-full max-w-md mx-auto">
                     <TabsTrigger value="users" className="flex items-center justify-center touch-target px-4 py-2">
@@ -2879,11 +2998,18 @@ export function UserDashboard() {
                 </div>
 
                 <TabsContent value="users">
-                  <AdminUserManagement />
+                  <AdminUserManagement 
+                    onViewUserLogs={handleViewUserLogs}
+                    onUpgradeUser={handleUpgradeUser}
+                  />
                 </TabsContent>
 
                 <TabsContent value="logs">
-                  <AdminActivityLogs />
+                  <AdminActivityLogs 
+                    selectedUserId={selectedUserForLogs?.id}
+                    selectedUserName={selectedUserForLogs?.name}
+                    onClearUserFilter={handleClearUserFilter}
+                  />
                 </TabsContent>
               </Tabs>
             </TabsContent>
