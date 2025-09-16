@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Configuração para Capacitor iOS - export estático necessário
+  output: 'export',
+  trailingSlash: true,
+  distDir: 'out',
+  
   devIndicators: false, // Remove widget de desenvolvimento Next.js
   
   // Allow ESLint and TypeScript to run during builds for production quality
@@ -39,8 +44,9 @@ const nextConfig: NextConfig = {
     ]
   },
   
-  // Configuração de imagens para principais provedores
+  // Configuração de imagens para principais provedores (desabilitada otimização para static export/Capacitor)
   images: {
+    unoptimized: true,
     remotePatterns: [
       // Unsplash - Banco de imagens gratuitas
       {
