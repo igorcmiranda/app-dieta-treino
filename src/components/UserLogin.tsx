@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCurrentUser, useUsers } from '@/lib/hooks';
+import { useCurrentUser, useUsers, useActivityLogger } from '@/lib/hooks';
 import { LogIn, Dumbbell, Heart, Target, UserPlus, KeyRound } from 'lucide-react';
 import { UserRegister } from './UserRegister';
 import { SubscriptionPlans } from './SubscriptionPlans';
@@ -25,6 +25,7 @@ export function UserLogin() {
   const [resetEmail, setResetEmail] = useState<string>('');
   const { login } = useCurrentUser();
   const { authenticateUser, users } = useUsers();
+  const { logActivity } = useActivityLogger();
 
   // Debug: mostrar usuários carregados
   useEffect(() => {
@@ -61,12 +62,41 @@ export function UserLogin() {
     console.log('Resultado da autenticação:', user);
     
     if (user) {
+      // Log de login bem-sucedido
+      logActivity({
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        action: 'LOGIN',
+        details: `Login realizado com sucesso via formulário`,
+        status: 'success',
+        metadata: {
+          loginMethod: 'form',
+          timestamp: new Date()
+        }
+      });
+
       login(user);
       // Forçar redirecionamento imediato após login
       setTimeout(() => {
         window.location.reload();
       }, 100);
     } else {
+      // Log de tentativa de login falhada
+      logActivity({
+        userId: 'unknown',
+        userName: 'Usuário Desconhecido',
+        userEmail: email || 'unknown',
+        action: 'LOGIN_FAILED',
+        details: `Tentativa de login falhada para email: ${email}`,
+        status: 'error',
+        metadata: {
+          loginMethod: 'form',
+          attemptedEmail: email,
+          timestamp: new Date()
+        }
+      });
+
       setError('Email ou senha incorretos');
     }
   };
@@ -78,12 +108,42 @@ export function UserLogin() {
     // Fazer login automaticamente
     const user = authenticateUser(demoEmail, demoPassword);
     if (user) {
+      // Log de login bem-sucedido via demo
+      logActivity({
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        action: 'LOGIN',
+        details: `Login realizado com sucesso via conta demo (${user.subscription?.plan})`,
+        status: 'success',
+        metadata: {
+          loginMethod: 'demo',
+          demoAccount: user.subscription?.plan,
+          timestamp: new Date()
+        }
+      });
+
       login(user);
       // Forçar redirecionamento imediato após login
       setTimeout(() => {
         window.location.reload();
       }, 100);
     } else {
+      // Log de erro no login demo
+      logActivity({
+        userId: 'unknown',
+        userName: 'Demo User',
+        userEmail: demoEmail,
+        action: 'LOGIN_FAILED',
+        details: `Erro ao fazer login com credenciais demo: ${demoEmail}`,
+        status: 'error',
+        metadata: {
+          loginMethod: 'demo',
+          attemptedEmail: demoEmail,
+          timestamp: new Date()
+        }
+      });
+
       setError('Erro ao fazer login com credenciais demo');
     }
   };

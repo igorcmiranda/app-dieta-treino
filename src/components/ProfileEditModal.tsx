@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { User, UserBilling } from '@/lib/types';
+import { useActivityLogger } from '@/lib/hooks';
 import {
   validateFullName,
   validateEmail,
@@ -82,6 +83,7 @@ interface FormErrors {
 
 export function ProfileEditModal({ isOpen, onClose, user, onSave }: ProfileEditModalProps) {
   const [activeTab, setActiveTab] = useState('personal');
+  const { logActivity } = useActivityLogger();
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
@@ -307,6 +309,30 @@ export function ProfileEditModal({ isOpen, onClose, user, onSave }: ProfileEditM
       // Simular salvamento
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Log da atualização de perfil/billing
+      logActivity({
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        action: 'PROFILE_UPDATE',
+        details: `Dados pessoais e de cobrança atualizados - Nome: ${formData.fullName}, Email: ${formData.email}, Cidade: ${formData.city}`,
+        status: 'success',
+        metadata: {
+          updatedFields: {
+            personalData: {
+              nameChanged: user.name !== formData.fullName.trim(),
+              emailChanged: user.email !== formData.email.trim()
+            },
+            billingData: {
+              hasAddress: !!(formData.street && formData.city),
+              hasCard: !!formData.cardNumber,
+              maskedCpf: formData.cpf ? '***.***.***-**' : undefined
+            }
+          },
+          timestamp: new Date()
+        }
+      });
+
       onSave(updatedUser);
       onClose();
       
@@ -315,6 +341,21 @@ export function ProfileEditModal({ isOpen, onClose, user, onSave }: ProfileEditM
       
     } catch (error) {
       console.error('Erro ao salvar dados:', error);
+      
+      // Log do erro
+      logActivity({
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        action: 'PROFILE_UPDATE',
+        details: `Erro ao atualizar dados pessoais e de cobrança: ${error}`,
+        status: 'error',
+        metadata: {
+          error: error.toString(),
+          timestamp: new Date()
+        }
+      });
+      
       alert('❌ Erro ao salvar dados. Tente novamente.');
     } finally {
       setIsSaving(false);

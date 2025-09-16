@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyses, useWorkoutProgress } from '@/lib/hooks';
+import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyses, useWorkoutProgress, useActivityLogger } from '@/lib/hooks';
 import { UserProfile, FoodEntry, WorkoutProgress, MealEntry } from '@/lib/types';
 import { generateDietPlan, generateWorkoutPlan } from '@/lib/fitness-utils';
 import { analyzeBodyPhotos } from '@/lib/body-analysis';
@@ -21,6 +21,8 @@ import { SubscriptionRequired } from './SubscriptionRequired';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
 import { ProfileEditModal } from './ProfileEditModal';
+import { AdminUserManagement } from './AdminUserManagement';
+import { AdminActivityLogs } from './AdminActivityLogs';
 import { 
   User, 
   LogOut, 
@@ -49,7 +51,10 @@ import {
   Check,
   Save,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Shield,
+  Users,
+  UserCog
 } from 'lucide-react';
 
 export function UserDashboard() {
@@ -64,6 +69,7 @@ export function UserDashboard() {
     getWorkoutProgressByDate, 
     updateWorkoutProgress 
   } = useWorkoutProgress();
+  const { logActivity } = useActivityLogger();
 
   const [activeTab, setActiveTab] = useState('profile');
   const [resultsTab, setResultsTab] = useState('diet');
@@ -1357,7 +1363,7 @@ export function UserDashboard() {
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="w-full">
-            <TabsList className="grid grid-cols-5 gap-1 p-1 w-full overflow-x-hidden max-w-full">
+            <TabsList className={`grid ${currentUser?.isAdmin ? 'grid-cols-6' : 'grid-cols-5'} gap-1 p-1 w-full overflow-x-hidden max-w-full`}>
             <TabsTrigger value="profile" className="flex items-center justify-center touch-target px-3 py-3">
               <User className="w-5 h-5" />
             </TabsTrigger>
@@ -1373,6 +1379,11 @@ export function UserDashboard() {
               <TabsTrigger value="ai-chat" className="flex items-center justify-center touch-target px-3 py-3">
                 <Heart className="w-5 h-5" />
               </TabsTrigger>
+              {currentUser?.isAdmin && (
+                <TabsTrigger value="admin" className="flex items-center justify-center touch-target px-3 py-3">
+                  <Shield className="w-5 h-5" />
+                </TabsTrigger>
+              )}
           </TabsList>
           </div>
 
@@ -2849,6 +2860,34 @@ export function UserDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Admin Tab - Apenas para administradores */}
+          {currentUser?.isAdmin && (
+            <TabsContent value="admin">
+              <Tabs defaultValue="users" className="space-y-6">
+                <div className="w-full">
+                  <TabsList className="grid grid-cols-2 gap-1 p-1 w-full max-w-md mx-auto">
+                    <TabsTrigger value="users" className="flex items-center justify-center touch-target px-4 py-2">
+                      <Users className="w-4 h-4 mr-2" />
+                      Usuários
+                    </TabsTrigger>
+                    <TabsTrigger value="logs" className="flex items-center justify-center touch-target px-4 py-2">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Logs
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="users">
+                  <AdminUserManagement />
+                </TabsContent>
+
+                <TabsContent value="logs">
+                  <AdminActivityLogs />
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

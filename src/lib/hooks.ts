@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, UserProfile, FoodEntry, DietPlan, WorkoutPlan, BodyAnalysis, WorkoutProgress, PasswordResetToken, ResetAttempt } from '@/lib/types';
+import { User, UserProfile, FoodEntry, DietPlan, WorkoutPlan, BodyAnalysis, WorkoutProgress, PasswordResetToken, ResetAttempt, ActivityLog } from '@/lib/types';
 
 // Dados demo para inicialização
 const initializeDemoUsers = (): User[] => {
@@ -525,5 +525,196 @@ export function usePasswordReset() {
     resetPassword,
     emailExists,
     cleanExpiredTokens
+  };
+}
+
+// Hook para logging de atividades administrativas
+export function useActivityLogger() {
+  const [logs, setLogs] = useLocalStorage<ActivityLog[]>('admin-activity-logs', []);
+
+  // Função para registrar uma nova atividade
+  const logActivity = (logData: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+    try {
+      const newLog: ActivityLog = {
+        ...logData,
+        id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date()
+      };
+
+      setLogs(prev => {
+        // Adicionar o novo log no início (mais recente primeiro)
+        const updatedLogs = [newLog, ...prev];
+        
+        // Implementar limpeza automática - manter apenas logs dos últimos 90 dias
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        
+        return updatedLogs.filter(log => new Date(log.timestamp) >= ninetyDaysAgo);
+      });
+
+      console.log(`[ACTIVITY LOG] ${logData.action}: ${logData.details}`, logData);
+    } catch (error) {
+      console.error('Erro ao registrar log de atividade:', error);
+    }
+  };
+
+  // Função para buscar logs com filtros opcionais
+  const getActivityLogs = (filters?: {
+    userId?: string;
+    action?: string;
+    status?: 'success' | 'error' | 'warning';
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    try {
+      let filteredLogs = [...logs];
+
+      if (filters) {
+        const {
+          userId,
+          action,
+          status,
+          startDate,
+          endDate,
+          search,
+          limit = 50,
+          offset = 0
+        } = filters;
+
+        // Filtrar por userId
+        if (userId) {
+          filteredLogs = filteredLogs.filter(log => log.userId === userId);
+        }
+
+        // Filtrar por ação
+        if (action) {
+          filteredLogs = filteredLogs.filter(log => 
+            log.action.toLowerCase().includes(action.toLowerCase())
+          );
+        }
+
+        // Filtrar por status
+        if (status) {
+          filteredLogs = filteredLogs.filter(log => log.status === status);
+        }
+
+        // Filtrar por período
+        if (startDate) {
+          filteredLogs = filteredLogs.filter(log => 
+            new Date(log.timestamp) >= startDate
+          );
+        }
+
+        if (endDate) {
+          filteredLogs = filteredLogs.filter(log => 
+            new Date(log.timestamp) <= endDate
+          );
+        }
+
+        // Busca por texto
+        if (search && search.trim()) {
+          const searchTerm = search.toLowerCase();
+          filteredLogs = filteredLogs.filter(log =>
+            log.userName.toLowerCase().includes(searchTerm) ||
+            log.userEmail.toLowerCase().includes(searchTerm) ||
+            log.action.toLowerCase().includes(searchTerm) ||
+            log.details.toLowerCase().includes(searchTerm)
+          );
+        }
+
+        // Ordenar por timestamp (mais recente primeiro)
+        filteredLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        // Paginação
+        return {
+          logs: filteredLogs.slice(offset, offset + limit),
+          total: filteredLogs.length,
+          hasMore: filteredLogs.length > offset + limit
+        };
+      }
+
+      // Retornar todos os logs ordenados se não houver filtros
+      filteredLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      return {
+        logs: filteredLogs,
+        total: filteredLogs.length,
+        hasMore: false
+      };
+    } catch (error) {
+      console.error('Erro ao buscar logs de atividade:', error);
+      return {
+        logs: [],
+        total: 0,
+        hasMore: false
+      };
+    }
+  };
+
+  // Função para estatísticas rápidas
+  const getLogStats = () => {
+    try {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const thisWeek = new Date(today);
+      thisWeek.setDate(thisWeek.getDate() - 7);
+
+      return {
+        total: logs.length,
+        today: logs.filter(log => {
+          const logDate = new Date(log.timestamp);
+          return logDate.toDateString() === today.toDateString();
+        }).length,
+        yesterday: logs.filter(log => {
+          const logDate = new Date(log.timestamp);
+          return logDate.toDateString() === yesterday.toDateString();
+        }).length,
+        thisWeek: logs.filter(log => new Date(log.timestamp) >= thisWeek).length,
+        byStatus: {
+          success: logs.filter(log => log.status === 'success').length,
+          error: logs.filter(log => log.status === 'error').length,
+          warning: logs.filter(log => log.status === 'warning').length
+        },
+        byAction: logs.reduce((acc, log) => {
+          acc[log.action] = (acc[log.action] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      };
+    } catch (error) {
+      console.error('Erro ao calcular estatísticas de logs:', error);
+      return {
+        total: 0,
+        today: 0,
+        yesterday: 0,
+        thisWeek: 0,
+        byStatus: { success: 0, error: 0, warning: 0 },
+        byAction: {}
+      };
+    }
+  };
+
+  // Função para limpar logs antigos manualmente (opcional)
+  const clearOldLogs = (daysToKeep: number = 90) => {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+      setLogs(prev => prev.filter(log => new Date(log.timestamp) >= cutoffDate));
+    } catch (error) {
+      console.error('Erro ao limpar logs antigos:', error);
+    }
+  };
+
+  return {
+    logActivity,
+    getActivityLogs,
+    getLogStats,
+    clearOldLogs,
+    totalLogs: logs.length
   };
 }

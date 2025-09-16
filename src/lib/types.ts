@@ -212,3 +212,17 @@ export interface ResetAttempt {
   lastAttempt: Date;
   blockedUntil?: Date;
 }
+
+// ADMIN SYSTEM - Activity Logging
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  action: string; // Ex: "LOGIN", "LOGOUT", "GENERATE_DIET", "BODY_ANALYSIS", etc.
+  details: string; // Descrição detalhada da ação
+  metadata?: any; // Dados extras quando relevante
+  timestamp: Date;
+  status: 'success' | 'error' | 'warning';
+  ip?: string; // Para auditoria de segurança
+}
