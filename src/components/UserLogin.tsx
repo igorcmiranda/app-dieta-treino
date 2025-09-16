@@ -216,6 +216,7 @@ export function UserLogin() {
       <SubscriptionPlans
         onSelectPlan={handleSelectPlan}
         onClose={() => setCurrentScreen('login')}
+        isNewUserFlow={true}
       />
     );
   }

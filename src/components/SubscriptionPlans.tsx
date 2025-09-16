@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 interface SubscriptionPlansProps {
   onSelectPlan: (planId: 'starter' | 'standard' | 'premium') => void;
   onClose: () => void;
+  isNewUserFlow?: boolean;
 }
 
 const plans: SubscriptionPlan[] = [
@@ -74,7 +75,7 @@ const plans: SubscriptionPlan[] = [
   }
 ];
 
-export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansProps) {
+export function SubscriptionPlans({ onSelectPlan, onClose, isNewUserFlow = false }: SubscriptionPlansProps) {
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<{
@@ -160,7 +161,8 @@ export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansPr
   const handleCheckoutSuccess = (subscriptionData: any) => {
     console.log('[SUBSCRIPTION] Pagamento realizado com sucesso:', subscriptionData);
     
-    if (currentUser) {
+    // Verificar se currentUser existe antes de usar
+    if (currentUser && currentUser.id) {
       // Atualizar usuário com dados da assinatura
       const updatedUser = {
         ...currentUser,
@@ -195,6 +197,17 @@ export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansPr
 
       // Chamar callback original
       onSelectPlan(checkoutPlan?.id as 'starter' | 'standard' | 'premium');
+    } else {
+      // Para novos usuários ou quando currentUser é null, apenas chamar callback
+      console.log('[SUBSCRIPTION] New user flow - skipping user update');
+      
+      toast({
+        title: "🎉 Assinatura ativada!",
+        description: `Bem-vindo ao plano ${checkoutPlan?.name}! Agora você tem acesso completo ao FitAI.`,
+      });
+      
+      // Chamar callback original mesmo sem currentUser
+      onSelectPlan(checkoutPlan?.id as 'starter' | 'standard' | 'premium');
     }
   };
 
@@ -220,7 +233,8 @@ export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansPr
   };
 
   // Se estivermos no checkout, mostrar o componente de checkout
-  if (showCheckout && checkoutPlan && currentUser) {
+  // Durante fluxo de novo usuário, currentUser pode ser null inicialmente, mas deve permitir checkout
+  if (showCheckout && checkoutPlan && (currentUser || isNewUserFlow)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-950 p-4 flex items-center justify-center">
         <IuguCheckout
@@ -230,11 +244,11 @@ export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansPr
           onSuccess={handleCheckoutSuccess}
           onError={handleCheckoutError}
           onBack={handleBackFromCheckout}
-          userId={currentUser.id}
-          userEmail={currentUser.email}
-          userName={currentUser.name}
-          userCPF={currentUser.cpf}
-          userPhone={currentUser.phone}
+          userId={currentUser?.id || `temp-user-${Date.now()}`}
+          userEmail={currentUser?.email || 'temp@example.com'}
+          userName={currentUser?.name || 'Usuário Temporário'}
+          userCPF={currentUser?.cpf}
+          userPhone={currentUser?.phone}
         />
       </div>
     );
@@ -347,16 +361,18 @@ export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansPr
           </ul>
         </div>
 
-        {/* Back Button */}
-        <div className="text-center">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="text-blue-600 hover:text-blue-700"
-          >
-            Voltar para o app
-          </Button>
-        </div>
+        {/* Back Button - só mostrar se NÃO for fluxo de novo usuário */}
+        {!isNewUserFlow && (
+          <div className="text-center">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              Voltar para o app
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

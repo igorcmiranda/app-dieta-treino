@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserPlus, Mail, Phone, CreditCard, ArrowLeft } from 'lucide-react';
+import { useUsers, useCurrentUser } from '@/lib/hooks';
 
 interface UserRegisterProps {
   onBack: () => void;
@@ -24,6 +25,8 @@ export function UserRegister({ onBack, onRegisterSuccess }: UserRegisterProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
+  const { addUser } = useUsers();
+  const { login } = useCurrentUser();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -110,9 +113,40 @@ export function UserRegister({ onBack, onRegisterSuccess }: UserRegisterProps) {
       // Simular criação de conta
       await new Promise(resolve => setTimeout(resolve, 2000));
       
+      // Criar usuário no sistema
+      const newUser = addUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        cpf: formData.cpf,
+        password: formData.password,
+        isAdmin: false,
+        emailVerified: true,
+        profile: {
+          age: 25, // valor padrão - usuário pode completar depois
+          gender: 'masculino', // valor padrão - usuário pode alterar depois
+          height: 170, // valor padrão - usuário pode completar depois
+          weight: 70, // valor padrão - usuário pode completar depois
+          activityLevel: 'moderado',
+          goal: 'manter-peso-perder-gordura',
+          preferredMuscleGroups: [],
+          foodRestrictions: [],
+          foodPreferences: []
+        },
+        // Subscription undefined - usuário escolherá plano depois
+        subscription: undefined
+      });
+
+      console.log('[REGISTRATION] Novo usuário criado:', newUser);
+
+      // Fazer login automático do usuário criado
+      login(newUser);
+      console.log('[REGISTRATION] Login automático realizado para:', newUser.email);
+      
       // Simular envio de email de verificação
       setShowVerification(true);
     } catch (error) {
+      console.error('[REGISTRATION] Erro ao criar usuário:', error);
       setErrors({ general: 'Erro ao criar conta. Tente novamente.' });
     } finally {
       setIsLoading(false);
