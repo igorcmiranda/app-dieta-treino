@@ -10,6 +10,7 @@ export interface User {
   isAdmin: boolean;
   profile?: UserProfile;
   subscription?: UserSubscription;
+  billing?: UserBilling; // SECURE BILLING DATA
   emailVerified: boolean;
   createdAt: Date;
 }
@@ -150,6 +151,35 @@ export interface AIResponse {
   success: boolean;
   data?: any;
   error?: string;
+}
+
+// SECURE BILLING INTERFACE - PCI COMPLIANCE & LGPD COMPLIANT
+export interface UserBilling {
+  // Dados pessoais (não sensíveis)
+  fullName: string;
+  email: string;
+  
+  // Endereço
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string; // UF
+  zipCode: string; // CEP
+  
+  // CPF mascarado apenas (NUNCA armazenar CPF completo)
+  maskedCpf?: string; // formato: ***.***.***-**
+  
+  // Cartão mascarado apenas (NUNCA armazenar PAN/CVV)
+  cardBrand?: string; // visa, mastercard, etc.
+  cardLast4?: string; // apenas últimos 4 dígitos
+  cardExpMonth?: string;
+  cardExpYear?: string;
+  cardHolderName?: string;
+  
+  // Controle
+  demoMode: boolean;
+  updatedAt: Date;
 }
 
 export interface PaymentData {

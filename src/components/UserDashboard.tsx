@@ -20,6 +20,7 @@ import { canAccessAI, hasActiveSubscription, canUseDiet, canUseBodyAnalysis, can
 import { SubscriptionRequired } from './SubscriptionRequired';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
+import { ProfileEditModal } from './ProfileEditModal';
 import { 
   User, 
   LogOut, 
@@ -77,6 +78,9 @@ export function UserDashboard() {
   const [showPayment, setShowPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
   const [subscriptionFeature, setSubscriptionFeature] = useState('');
+  
+  // Estados para edição de perfil/billing
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   
   // Estados do perfil
   const [profile, setProfile] = useState<Partial<UserProfile>>({
@@ -1144,6 +1148,32 @@ export function UserDashboard() {
     alert('✅ Pagamento realizado com sucesso! Agora você pode usar todas as funcionalidades.');
   };
 
+  // Função para salvar dados de perfil/billing - SEGURA
+  const handleProfileSave = (updatedUser: any) => {
+    if (!currentUser) return;
+    
+    try {
+      // SECURITY: Atualizar apenas com dados seguros
+      updateCurrentUser(updatedUser);
+      updateUser(currentUser.id, updatedUser);
+      
+      console.log('✅ Perfil atualizado com segurança:', {
+        userId: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        hasBilling: !!updatedUser.billing,
+        billingComplete: !!updatedUser.billing?.street
+      });
+      
+      // Fechar modal
+      setShowProfileEditModal(false);
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar perfil:', error);
+      alert('Erro ao salvar dados. Tente novamente.');
+    }
+  };
+
   if (!currentUser) {
     return <div>Carregando...</div>;
   }
@@ -1154,20 +1184,28 @@ export function UserDashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center touch-target">
+            <button
+              onClick={() => setShowProfileEditModal(true)}
+              className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center touch-target hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              title="Clique para editar seus dados pessoais e billing"
+            >
               {currentUser.profile?.profilePhoto ? (
                 <img 
                   src={currentUser.profile.profilePhoto} 
-                  alt="Foto de perfil"
+                  alt="Foto de perfil - Clique para editar"
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <User className="w-6 h-6 text-white" />
               )}
-            </div>
+            </button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
                 Olá, {currentUser.name}!
+                <Edit 
+                  className="w-4 h-4 text-gray-400 hover:text-blue-600 cursor-pointer transition-colors" 
+                  onClick={() => setShowProfileEditModal(true)}
+                />
               </h1>
               <p className="text-sm sm:text-base text-gray-600">Bem-vindo(a) à sua IA Fitness Pessoal</p>
             </div>
@@ -2829,6 +2867,14 @@ export function UserDashboard() {
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}
+
+      {/* Modal de Edição de Perfil/Billing - SEGURO */}
+      <ProfileEditModal
+        isOpen={showProfileEditModal}
+        onClose={() => setShowProfileEditModal(false)}
+        user={currentUser}
+        onSave={handleProfileSave}
+      />
     </div>
   );
 }
