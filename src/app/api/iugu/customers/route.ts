@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Criar e gerenciar customers na Iugu
 export async function POST(req: NextRequest) {
   try {
@@ -72,7 +74,7 @@ export async function GET(req: NextRequest) {
     
     const response = await fetch(`https://api.iugu.com/v1/customers/${customer_id}`, {
       headers: {
-        'Authorization': `Bearer ${IUGU_API_TOKEN}`
+        'Authorization': `Basic ${Buffer.from(`${IUGU_API_TOKEN}:`).toString('base64')}`
       }
     });
     
