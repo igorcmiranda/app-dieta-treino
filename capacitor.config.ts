@@ -14,10 +14,8 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false
   },
   
-  // Configurações gerais do servidor
+  // Configurações do servidor para máxima compatibilidade
   server: {
-    // Para desenvolvimento, usar localhost. Para produção, deixar vazio
-    hostname: 'localhost',
     androidScheme: 'https',
     iosScheme: 'capacitor'
   },
