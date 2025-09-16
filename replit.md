@@ -4,6 +4,13 @@
 FitAI Coach is a Next.js fitness application that provides personalized diet and workout plans powered by AI. The app features user authentication, admin panels, workout tracking, and body analysis capabilities.
 
 ## Recent Changes
+- September 16, 2025: **Otimização completa da interface para iOS mobile**
+  - Configurado safe areas para iPhone (notch, home indicator, Dynamic Island)
+  - Implementado layout mobile-first responsivo com grid adaptativo
+  - Corrigido sobreposição de ícones com TabsList horizontal scrolling
+  - Aplicado tamanhos de toque mínimos (44px) em todos elementos interativos
+  - Otimizado performance CSS para iOS WebView com classes específicas
+  - Interface agora totalmente compatível e otimizada para iPhones
 - September 16, 2025: **Configuração iOS completa com Capacitor**
   - Next.js configurado para static export (requerido para Capacitor)
   - Capacitor instalado e configurado para iOS nativo

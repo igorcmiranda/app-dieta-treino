@@ -1072,12 +1072,12 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="screen-height bg-gradient-to-br from-blue-50 to-indigo-100 safe-area">
+      <div className="max-w-7xl mx-auto px-3 md:px-4">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center touch-target">
               {currentUser.profile?.profilePhoto ? (
                 <img 
                   src={currentUser.profile.profilePhoto} 
@@ -1089,10 +1089,10 @@ export function UserDashboard() {
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 Olá, {currentUser.name}!
               </h1>
-              <p className="text-gray-600">Bem-vindo(a) à sua IA Fitness Pessoal</p>
+              <p className="text-sm sm:text-base text-gray-600">Bem-vindo(a) à sua IA Fitness Pessoal</p>
             </div>
           </div>
           <Button 
@@ -1105,7 +1105,7 @@ export function UserDashboard() {
               }, 100);
             }}
             variant="outline"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 touch-target text-sm sm:text-base"
           >
             <LogOut className="w-4 h-4" />
             Sair
@@ -1114,30 +1114,37 @@ export function UserDashboard() {
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+          <div className="overflow-x-auto no-scrollbar ios-scroll">
+            <TabsList className="overflow-x-auto whitespace-nowrap no-scrollbar flex w-max min-w-full lg:w-auto lg:grid lg:grid-cols-5 gap-1 p-1">
+            <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
               <User className="w-4 h-4" />
-              Perfil
+              <span className="hidden sm:inline">Perfil</span>
+              <span className="sm:hidden">P</span>
             </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <TabsTrigger value="dashboard" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
               <Activity className="w-4 h-4" />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
+              <span className="sm:hidden">D</span>
             </TabsTrigger>
-            <TabsTrigger value="workout" className="flex items-center gap-2">
+            <TabsTrigger value="workout" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
               <Dumbbell className="w-4 h-4" />
-              Treino
+              <span className="hidden sm:inline">Treino</span>
+              <span className="sm:hidden">T</span>
             </TabsTrigger>
-            <TabsTrigger value="results" className="flex items-center gap-2">
+            <TabsTrigger value="results" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
               <Target className="w-4 h-4" />
-              Resultados
+              <span className="hidden sm:inline">Resultados</span>
+              <span className="sm:hidden">R</span>
             </TabsTrigger>
             {currentUser && hasActiveSubscription(currentUser) && (
-              <TabsTrigger value="ai-chat" className="flex items-center gap-2">
+              <TabsTrigger value="ai-chat" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
                 <Heart className="w-4 h-4" />
-                IA Coach
+                <span className="hidden sm:inline">IA Coach</span>
+                <span className="sm:hidden">IA</span>
               </TabsTrigger>
             )}
           </TabsList>
+          </div>
 
           {/* Profile Tab */}
           <TabsContent value="profile">
@@ -1303,7 +1310,7 @@ export function UserDashboard() {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" className="w-full touch-target">
                     Salvar Perfil
                   </Button>
                 </form>
@@ -1313,7 +1320,7 @@ export function UserDashboard() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Alimentação */}
               <Card>
                 <CardHeader>
@@ -1627,7 +1634,7 @@ export function UserDashboard() {
                           )}
                         </div>
 
-                        <Button onClick={addMealToList} className="w-full">
+                        <Button onClick={addMealToList} className="w-full touch-target">
                           Adicionar Refeição
                         </Button>
                       </div>
@@ -1810,7 +1817,7 @@ export function UserDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {(['front', 'back', 'left', 'right'] as const).map((position) => (
                       <div key={position} className="space-y-2">
                         <Label className="capitalize">
@@ -2051,7 +2058,7 @@ export function UserDashboard() {
                           </div>
                         ))}
 
-                        <Button onClick={saveCompleteWorkout} className="w-full">
+                        <Button onClick={saveCompleteWorkout} className="w-full touch-target">
                           <Save className="w-4 h-4 mr-2" />
                           Salvar Treino
                         </Button>
@@ -2084,11 +2091,13 @@ export function UserDashboard() {
           <TabsContent value="results">
             <div className="space-y-6">
               <Tabs value={resultsTab} onValueChange={setResultsTab}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="diet">Dieta</TabsTrigger>
-                  <TabsTrigger value="workout">Treino</TabsTrigger>
-                  <TabsTrigger value="analysis">Análise</TabsTrigger>
+                <div className="overflow-x-auto no-scrollbar ios-scroll">
+                <TabsList className="overflow-x-auto whitespace-nowrap no-scrollbar flex w-max min-w-full lg:w-auto lg:grid lg:grid-cols-3 gap-1 p-1">
+                  <TabsTrigger value="diet" className="touch-target whitespace-nowrap px-3 sm:px-4 text-sm">Dieta</TabsTrigger>
+                  <TabsTrigger value="workout" className="touch-target whitespace-nowrap px-3 sm:px-4 text-sm">Treino</TabsTrigger>
+                  <TabsTrigger value="analysis" className="touch-target whitespace-nowrap px-3 sm:px-4 text-sm">Análise</TabsTrigger>
                 </TabsList>
+                </div>
 
                 <TabsContent value="diet">
                   {currentDietPlan ? (
