@@ -116,22 +116,72 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     try {
       if (typeof window !== 'undefined') {
         const item = window.localStorage.getItem(key);
-        if (item) {
+        
+        if (key === 'fitness-app-users') {
+          console.log('[USER INITIALIZATION] Checking demo users...');
+          
+          let existingUsers: User[] = [];
+          if (item) {
+            try {
+              existingUsers = JSON.parse(item) as User[];
+              console.log('[USER INITIALIZATION] Existing users found:', existingUsers.map(u => u.email));
+            } catch (parseError) {
+              console.error('[USER INITIALIZATION] Error parsing existing users:', parseError);
+              existingUsers = [];
+            }
+          }
+          
+          // Verificar se usuários essenciais existem
+          const requiredEmails = ['admin@fitai.com', 'starter@test.com', 'standard@test.com'];
+          const existingEmails = existingUsers.map(u => u.email);
+          const missingUsers = requiredEmails.filter(email => !existingEmails.includes(email));
+          
+          if (missingUsers.length > 0 || existingUsers.length === 0) {
+            console.log('[USER INITIALIZATION] Missing essential users:', missingUsers);
+            console.log('[USER INITIALIZATION] Initializing demo users...');
+            
+            // Criar usuários demo
+            const demoUsers = initializeDemoUsers();
+            console.log('[USER INITIALIZATION] Demo users created:', demoUsers.map(u => u.email));
+            
+            // Manter usuários manuais existentes que não sejam dos demos essenciais
+            const manualUsers = existingUsers.filter(u => !requiredEmails.includes(u.email));
+            if (manualUsers.length > 0) {
+              console.log('[USER INITIALIZATION] Preserving manual users:', manualUsers.map(u => u.email));
+            }
+            
+            // Combinar usuários demo + usuários manuais
+            const allUsers = [...demoUsers, ...manualUsers];
+            console.log('[USER INITIALIZATION] Final user list:', allUsers.map(u => ({ email: u.email, name: u.name, plan: u.subscription?.plan })));
+            
+            window.localStorage.setItem(key, JSON.stringify(allUsers));
+            setStoredValue(allUsers as T);
+          } else {
+            console.log('[USER INITIALIZATION] All essential users exist, using existing data');
+            setStoredValue(existingUsers as T);
+          }
+        } else if (item) {
           const parsedValue = JSON.parse(item);
           setStoredValue(parsedValue);
-        } else if (key === 'fitness-app-users') {
-          // Inicializar dados demo se não existirem usuários
-          const demoUsers = initializeDemoUsers();
-          window.localStorage.setItem(key, JSON.stringify(demoUsers));
-          setStoredValue(demoUsers as T);
+        } else {
+          // Para outras chaves, usar valor inicial
+          setStoredValue(initialValue);
         }
       }
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
       if (key === 'fitness-app-users') {
         // Fallback para dados demo em caso de erro
+        console.log('[USER INITIALIZATION] Error fallback - creating demo users');
         const demoUsers = initializeDemoUsers();
         setStoredValue(demoUsers as T);
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(key, JSON.stringify(demoUsers));
+          }
+        } catch (writeError) {
+          console.error('[USER INITIALIZATION] Error writing fallback users to localStorage:', writeError);
+        }
       }
     } finally {
       setIsInitialized(true);
@@ -153,9 +203,59 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   return [storedValue, setValue, isInitialized] as const;
 }
 
+// Função utilitária para forçar reset dos usuários demo
+export function forceResetDemoUsers() {
+  try {
+    console.log('[FORCE RESET] Forçando reset dos usuários demo...');
+    const demoUsers = initializeDemoUsers();
+    
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('fitness-app-users', JSON.stringify(demoUsers));
+      console.log('[FORCE RESET] Usuários demo reinicializados no localStorage:', demoUsers.map(u => u.email));
+    }
+    
+    return demoUsers;
+  } catch (error) {
+    console.error('[FORCE RESET] Erro ao forçar reset dos usuários demo:', error);
+    return [];
+  }
+}
+
 // Hook para gerenciar usuários
 export function useUsers() {
   const [users, setUsers, isInitialized] = useLocalStorage<User[]>('fitness-app-users', []);
+
+  // Verificar e garantir que usuários demo existem quando o hook é inicializado
+  useEffect(() => {
+    if (isInitialized && typeof window !== 'undefined') {
+      const requiredEmails = ['admin@fitai.com', 'starter@test.com', 'standard@test.com'];
+      const existingEmails = users.map(u => u.email);
+      const missingUsers = requiredEmails.filter(email => !existingEmails.includes(email));
+      
+      console.log('[useUsers] Verificando usuários essenciais...');
+      console.log('[useUsers] Usuários existentes:', existingEmails);
+      console.log('[useUsers] Usuários essenciais faltando:', missingUsers);
+      
+      if (missingUsers.length > 0) {
+        console.log('[useUsers] Usuários demo essenciais faltando, forçando reinicialização...');
+        const demoUsers = initializeDemoUsers();
+        
+        // Preservar usuários manuais que não sejam demos
+        const manualUsers = users.filter(u => !requiredEmails.includes(u.email));
+        if (manualUsers.length > 0) {
+          console.log('[useUsers] Preservando usuários manuais:', manualUsers.map(u => u.email));
+        }
+        
+        // Combinar demos + manuais
+        const allUsers = [...demoUsers, ...manualUsers];
+        console.log('[useUsers] Atualizando usuários para:', allUsers.map(u => ({ email: u.email, name: u.name, plan: u.subscription?.plan })));
+        
+        setUsers(allUsers);
+      } else {
+        console.log('[useUsers] Todos os usuários essenciais existem');
+      }
+    }
+  }, [isInitialized, users.length]);
 
   const addUser = (userData: Omit<User, 'id' | 'createdAt'>) => {
     const newUser: User = {
