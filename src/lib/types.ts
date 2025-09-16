@@ -190,3 +190,25 @@ export interface PaymentData {
   cpf: string;
   plan: 'starter' | 'standard' | 'premium';
 }
+
+// Password Reset System - SECURE TOKENS
+export interface PasswordResetToken {
+  email: string;
+  token: string;
+  expires: Date;
+  createdAt: Date;
+  used: boolean;
+}
+
+export interface PasswordResetRequest {
+  email: string;
+  timestamp: Date;
+}
+
+// Rate limiting for password reset attempts
+export interface ResetAttempt {
+  email: string;
+  attempts: number;
+  lastAttempt: Date;
+  blockedUntil?: Date;
+}

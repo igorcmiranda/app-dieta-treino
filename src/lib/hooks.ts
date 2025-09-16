@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { User, UserProfile, FoodEntry, DietPlan, WorkoutPlan, BodyAnalysis, WorkoutProgress } from '@/lib/types';
+import { User, UserProfile, FoodEntry, DietPlan, WorkoutPlan, BodyAnalysis, WorkoutProgress, PasswordResetToken, ResetAttempt } from '@/lib/types';
 
 // Dados demo para inicialização
 const initializeDemoUsers = (): User[] => {
@@ -339,5 +339,191 @@ export function useCurrentUser() {
     updateCurrentUser,
     isLoggedIn: !!currentUser,
     isAdmin: currentUser?.isAdmin || false
+  };
+}
+
+// Hook para gerenciar recuperação de senha - SEGURANÇA ROBUSTA
+export function usePasswordReset() {
+  const [resetTokens, setResetTokens] = useLocalStorage<Record<string, PasswordResetToken>>('fitness-app-reset-tokens', {});
+  const [resetAttempts, setResetAttempts] = useLocalStorage<Record<string, ResetAttempt>>('fitness-app-reset-attempts', {});
+  const { users, updateUser } = useUsers();
+
+  // Gerar token seguro
+  const generateSecureToken = (): string => {
+    // Usar crypto API se disponível, senão fallback
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID() + '-' + Date.now();
+    }
+    // Fallback para environments que não suportam crypto
+    return 'reset-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+  };
+
+  // Verificar rate limiting (máximo 3 tentativas por hora)
+  const checkRateLimit = (email: string): boolean => {
+    const attempt = resetAttempts[email];
+    if (!attempt) return true;
+
+    const now = new Date();
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    // Se está bloqueado, verificar se ainda está no período de bloqueio
+    if (attempt.blockedUntil && now < attempt.blockedUntil) {
+      return false;
+    }
+
+    // Se a última tentativa foi há mais de 1 hora, resetar contador
+    if (attempt.lastAttempt < hourAgo) {
+      setResetAttempts(prev => ({
+        ...prev,
+        [email]: { email, attempts: 0, lastAttempt: now }
+      }));
+      return true;
+    }
+
+    // Se já fez 3 ou mais tentativas na última hora
+    if (attempt.attempts >= 3) {
+      const blockedUntil = new Date(now.getTime() + 60 * 60 * 1000); // Bloquear por 1 hora
+      setResetAttempts(prev => ({
+        ...prev,
+        [email]: { ...attempt, blockedUntil }
+      }));
+      return false;
+    }
+
+    return true;
+  };
+
+  // Incrementar tentativa
+  const incrementAttempt = (email: string) => {
+    const now = new Date();
+    setResetAttempts(prev => ({
+      ...prev,
+      [email]: {
+        email,
+        attempts: (prev[email]?.attempts || 0) + 1,
+        lastAttempt: now,
+        blockedUntil: prev[email]?.blockedUntil
+      }
+    }));
+  };
+
+  // Criar token de reset
+  const createResetToken = (email: string): string => {
+    const token = generateSecureToken();
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    
+    const resetToken: PasswordResetToken = {
+      email,
+      token,
+      expires,
+      createdAt: new Date(),
+      used: false
+    };
+
+    // Limpar tokens antigos para este email
+    setResetTokens(prev => {
+      const newTokens = { ...prev };
+      Object.keys(newTokens).forEach(key => {
+        if (newTokens[key].email === email) {
+          delete newTokens[key];
+        }
+      });
+      newTokens[token] = resetToken;
+      return newTokens;
+    });
+
+    return token;
+  };
+
+  // Validar token
+  const validateToken = (token: string): { valid: boolean; email?: string; error?: string } => {
+    const resetToken = resetTokens[token];
+    
+    if (!resetToken) {
+      return { valid: false, error: 'Token inválido ou expirado' };
+    }
+
+    if (resetToken.used) {
+      return { valid: false, error: 'Este token já foi utilizado' };
+    }
+
+    if (new Date() > resetToken.expires) {
+      return { valid: false, error: 'Token expirado. Solicite um novo link de recuperação.' };
+    }
+
+    return { valid: true, email: resetToken.email };
+  };
+
+  // Marcar token como usado
+  const markTokenAsUsed = (token: string) => {
+    setResetTokens(prev => ({
+      ...prev,
+      [token]: { ...prev[token], used: true }
+    }));
+  };
+
+  // Limpar tokens expirados (limpeza automática)
+  const cleanExpiredTokens = () => {
+    const now = new Date();
+    setResetTokens(prev => {
+      const newTokens = { ...prev };
+      Object.keys(newTokens).forEach(key => {
+        if (newTokens[key].expires < now) {
+          delete newTokens[key];
+        }
+      });
+      return newTokens;
+    });
+  };
+
+  // Verificar se email existe (sem revelar esta informação)
+  const emailExists = (email: string): boolean => {
+    return users.some(user => user.email.toLowerCase() === email.toLowerCase());
+  };
+
+  // Reset da senha
+  const resetPassword = (token: string, newPassword: string): { success: boolean; error?: string } => {
+    const validation = validateToken(token);
+    
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
+    const email = validation.email!;
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    if (!user) {
+      return { success: false, error: 'Usuário não encontrado' };
+    }
+
+    // Validar força da senha
+    if (newPassword.length < 6) {
+      return { success: false, error: 'A senha deve ter pelo menos 6 caracteres' };
+    }
+
+    // Atualizar senha do usuário
+    updateUser(user.id, { password: newPassword });
+    
+    // Marcar token como usado
+    markTokenAsUsed(token);
+    
+    // Limpar tentativas para este email
+    setResetAttempts(prev => {
+      const newAttempts = { ...prev };
+      delete newAttempts[email];
+      return newAttempts;
+    });
+
+    return { success: true };
+  };
+
+  return {
+    checkRateLimit,
+    incrementAttempt,
+    createResetToken,
+    validateToken,
+    resetPassword,
+    emailExists,
+    cleanExpiredTokens
   };
 }

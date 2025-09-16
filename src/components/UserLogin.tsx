@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCurrentUser, useUsers } from '@/lib/hooks';
-import { LogIn, Dumbbell, Heart, Target, UserPlus } from 'lucide-react';
+import { LogIn, Dumbbell, Heart, Target, UserPlus, KeyRound } from 'lucide-react';
 import { UserRegister } from './UserRegister';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
+import { ForgotPassword } from './ForgotPassword';
+import { ResetPassword } from './ResetPassword';
 
-type AuthScreen = 'login' | 'register' | 'plans' | 'payment';
+type AuthScreen = 'login' | 'register' | 'plans' | 'payment' | 'forgot-password' | 'reset-password';
 
 export function UserLogin() {
   const [email, setEmail] = useState('');
@@ -19,6 +21,8 @@ export function UserLogin() {
   const [error, setError] = useState('');
   const [currentScreen, setCurrentScreen] = useState<AuthScreen>('login');
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
+  const [resetToken, setResetToken] = useState<string>('');
+  const [resetEmail, setResetEmail] = useState<string>('');
   const { login } = useCurrentUser();
   const { authenticateUser, users } = useUsers();
 
@@ -26,6 +30,25 @@ export function UserLogin() {
   useEffect(() => {
     console.log('Usuários carregados no UserLogin:', users);
   }, [users]);
+
+  // Verificar parâmetros da URL para reset de senha
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('resetToken');
+      const emailParam = urlParams.get('email');
+      
+      if (token && emailParam) {
+        setResetToken(token);
+        setResetEmail(decodeURIComponent(emailParam));
+        setCurrentScreen('reset-password');
+        
+        // Limpar parâmetros da URL sem recarregar a página
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +130,17 @@ export function UserLogin() {
     login(newUser);
   };
 
+  // Manipular sucesso da recuperação de senha
+  const handlePasswordResetSuccess = () => {
+    setCurrentScreen('login');
+    setEmail(resetEmail); // Pré-preencher o email
+    setError('');
+    // Mostrar mensagem de sucesso temporária
+    setTimeout(() => {
+      alert('Senha redefinida com sucesso! Faça login com sua nova senha.');
+    }, 100);
+  };
+
   // Renderizar tela baseada no estado atual
   if (currentScreen === 'register') {
     return (
@@ -132,6 +166,25 @@ export function UserLogin() {
         selectedPlan={selectedPlan}
         onBack={() => setCurrentScreen('plans')}
         onPaymentSuccess={handlePaymentSuccess}
+      />
+    );
+  }
+
+  if (currentScreen === 'forgot-password') {
+    return (
+      <ForgotPassword
+        onBack={() => setCurrentScreen('login')}
+      />
+    );
+  }
+
+  if (currentScreen === 'reset-password' && resetToken && resetEmail) {
+    return (
+      <ResetPassword
+        token={resetToken}
+        email={resetEmail}
+        onBack={() => setCurrentScreen('login')}
+        onSuccess={handlePasswordResetSuccess}
       />
     );
   }
@@ -210,7 +263,7 @@ export function UserLogin() {
             </form>
 
             {/* Register Button */}
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               <Button
                 variant="outline"
                 onClick={() => setCurrentScreen('register')}
@@ -218,6 +271,16 @@ export function UserLogin() {
               >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Não tem conta? Cadastre-se agora mesmo
+              </Button>
+              
+              {/* Forgot Password Button */}
+              <Button
+                variant="ghost"
+                onClick={() => setCurrentScreen('forgot-password')}
+                className="w-full text-blue-600 hover:bg-blue-50 hover:text-blue-700 touch-target text-sm"
+              >
+                <KeyRound className="w-4 h-4 mr-2" />
+                Esqueci minha senha
               </Button>
             </div>
 
