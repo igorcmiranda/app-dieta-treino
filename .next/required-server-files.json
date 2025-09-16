@@ -427,11 +427,6 @@
     "configFileName": "next.config.ts",
     "turbopack": {
       "root": "/home/runner/workspace"
-    },
-    "_originalRewrites": {
-      "beforeFiles": [],
-      "afterFiles": [],
-      "fallback": []
     }
   },
   "appDir": "/home/runner/workspace",

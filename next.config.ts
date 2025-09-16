@@ -16,33 +16,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
 
-  // Replit environment configuration - allow all hosts for proxy support
-  async rewrites() {
-    return []
-  },
-  
-  // Allow cross-origin requests for Replit proxy environment
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
-        ],
-      },
-    ]
-  },
+  // Configurações de headers e rewrites removidas para compatibilidade com static export
   
   // Configuração de imagens para principais provedores (desabilitada otimização para static export/Capacitor)
   images: {

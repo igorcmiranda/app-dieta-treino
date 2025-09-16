@@ -11,12 +11,7 @@ const config: CapacitorConfig = {
     backgroundColor: '#ffffff',
     
     // Permitir navegação inline para melhor UX
-    webContentsDebuggingEnabled: false,
-    
-    // Configurações de splash screen
-    splash: {
-      launchShowDuration: 0
-    }
+    webContentsDebuggingEnabled: false
   },
   
   // Configurações gerais do servidor
