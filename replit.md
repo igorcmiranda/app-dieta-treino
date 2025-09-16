@@ -4,6 +4,14 @@
 FitAI Coach is a Next.js fitness application that provides personalized diet and workout plans powered by AI. The app features user authentication, admin panels, workout tracking, and body analysis capabilities.
 
 ## Recent Changes
+- September 16, 2025: **Tela de edição de dados pessoais e billing segura implementada**
+  - Modal completo de edição acionado pelo clique no ícone de perfil
+  - 3 seções: Dados Pessoais, Endereço/Billing, Cartão de Crédito Demo
+  - Conformidade total PCI DSS e LGPD - dados sensíveis nunca armazenados
+  - Validações robustas: CPF (checksum), CEP, cartão (Luhn), email
+  - Máscaras em tempo real para todos os campos sensíveis
+  - Banner de segurança claro sobre modo demo
+  - Tipos seguros UserBilling sem PAN/CVV/CPF completo
 - September 16, 2025: **Sistema de planos de assinatura implementado**
   - Sistema completo de 3 planos: Starter (1/1), Standard (2/2), Premium (4/4 + IA)
   - Controle de limites mensais para dietas e análises corporais
