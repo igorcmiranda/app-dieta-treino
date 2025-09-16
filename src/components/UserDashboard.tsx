@@ -1072,8 +1072,8 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="ios-main-scroll bg-gradient-to-br from-blue-50 to-indigo-100 safe-area">
-      <div className="max-w-7xl mx-auto px-3 md:px-4 ios-content-scroll">
+    <div className="ios-main-scroll bg-gradient-to-br from-blue-50 to-indigo-100 safe-area pt-safe-top pb-safe-bottom">
+      <div className="max-w-7xl mx-auto px-4 ios-content-scroll">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">
@@ -1114,33 +1114,23 @@ export function UserDashboard() {
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="overflow-x-auto no-scrollbar ios-scroll">
-            <TabsList className="overflow-x-auto whitespace-nowrap no-scrollbar flex w-max min-w-full lg:w-auto lg:grid lg:grid-cols-5 gap-1 p-1">
-            <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Perfil</span>
-              <span className="sm:hidden">P</span>
+          <div className="w-full">
+            <TabsList className="grid grid-cols-4 sm:grid-cols-5 gap-1 p-1 w-full">
+            <TabsTrigger value="profile" className="flex items-center justify-center touch-target px-3 py-3">
+              <User className="w-5 h-5" />
             </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
-              <Activity className="w-4 h-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-              <span className="sm:hidden">D</span>
+            <TabsTrigger value="dashboard" className="flex items-center justify-center touch-target px-3 py-3">
+              <Activity className="w-5 h-5" />
             </TabsTrigger>
-            <TabsTrigger value="workout" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
-              <Dumbbell className="w-4 h-4" />
-              <span className="hidden sm:inline">Treino</span>
-              <span className="sm:hidden">T</span>
+            <TabsTrigger value="workout" className="flex items-center justify-center touch-target px-3 py-3">
+              <Dumbbell className="w-5 h-5" />
             </TabsTrigger>
-            <TabsTrigger value="results" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
-              <Target className="w-4 h-4" />
-              <span className="hidden sm:inline">Resultados</span>
-              <span className="sm:hidden">R</span>
+            <TabsTrigger value="results" className="flex items-center justify-center touch-target px-3 py-3">
+              <Target className="w-5 h-5" />
             </TabsTrigger>
             {currentUser && hasActiveSubscription(currentUser) && (
-              <TabsTrigger value="ai-chat" className="flex items-center gap-1 sm:gap-2 touch-target whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm">
-                <Heart className="w-4 h-4" />
-                <span className="hidden sm:inline">IA Coach</span>
-                <span className="sm:hidden">IA</span>
+              <TabsTrigger value="ai-chat" className="flex items-center justify-center touch-target px-3 py-3">
+                <Heart className="w-5 h-5" />
               </TabsTrigger>
             )}
           </TabsList>
@@ -1333,11 +1323,11 @@ export function UserDashboard() {
                   {dietStep === 'question' && (
                     <div className="text-center space-y-4">
                       <p className="text-gray-600">Você segue alguma dieta específica atualmente?</p>
-                      <div className="flex gap-4 justify-center">
-                        <Button onClick={() => handleDietQuestion(true)} variant="outline">
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                        <Button onClick={() => handleDietQuestion(true)} variant="outline" className="w-auto px-6 min-w-44">
                           Sim, sigo uma dieta
                         </Button>
-                        <Button onClick={() => handleDietQuestion(false)} variant="outline">
+                        <Button onClick={() => handleDietQuestion(false)} variant="outline" className="w-auto px-6 min-w-44">
                           Não sigo dieta específica
                         </Button>
                       </div>
@@ -1580,33 +1570,38 @@ export function UserDashboard() {
                         {/* Adicionar alimentos à refeição */}
                         <div className="space-y-3">
                           <Label>Alimentos</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <Input
-                              placeholder="Alimento"
-                              value={newFood.food}
-                              onChange={(e) => setNewFood(prev => ({ ...prev, food: e.target.value }))}
-                            />
-                            <Input
-                              placeholder="Quantidade"
-                              value={newFood.quantity}
-                              onChange={(e) => setNewFood(prev => ({ ...prev, quantity: e.target.value }))}
-                            />
-                            <Select 
-                              value={newFood.measurement} 
-                              onValueChange={(value: 'colher-sopa' | 'colher-cha' | 'xicara' | 'gramas' | 'ml' | 'unidade') => setNewFood(prev => ({ ...prev, measurement: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="gramas">gramas</SelectItem>
-                                <SelectItem value="ml">ml</SelectItem>
-                                <SelectItem value="unidade">unidade</SelectItem>
-                                <SelectItem value="colher-sopa">colher de sopa</SelectItem>
-                                <SelectItem value="colher-cha">colher de chá</SelectItem>
-                                <SelectItem value="xicara">xícara</SelectItem>
-                              </SelectContent>
-                            </Select>
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                placeholder="Alimento"
+                                value={newFood.food}
+                                onChange={(e) => setNewFood(prev => ({ ...prev, food: e.target.value }))}
+                              />
+                              <Select 
+                                value={newFood.measurement} 
+                                onValueChange={(value: 'colher-sopa' | 'colher-cha' | 'xicara' | 'gramas' | 'ml' | 'unidade') => setNewFood(prev => ({ ...prev, measurement: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="gramas">gramas</SelectItem>
+                                  <SelectItem value="ml">ml</SelectItem>
+                                  <SelectItem value="unidade">unidade</SelectItem>
+                                  <SelectItem value="colher-sopa">col. sopa</SelectItem>
+                                  <SelectItem value="colher-cha">col. chá</SelectItem>
+                                  <SelectItem value="xicara">xícara</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Quantidade"
+                                value={newFood.quantity}
+                                onChange={(e) => setNewFood(prev => ({ ...prev, quantity: e.target.value }))}
+                                className="flex-1"
+                              />
+                            </div>
                             <Button onClick={addFoodToMeal} size="sm">
                               <Plus className="w-4 h-4" />
                             </Button>
@@ -2279,32 +2274,33 @@ export function UserDashboard() {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                              <label className="text-sm font-medium text-gray-700 min-w-fit">
-                                Número de refeições por dia:
-                              </label>
-                              <Select 
-                                value={selectedMealCount.toString()} 
-                                onValueChange={(value) => setSelectedMealCount(parseInt(value))}
-                              >
-                                <SelectTrigger className="w-24">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="1">1</SelectItem>
-                                  <SelectItem value="2">2</SelectItem>
-                                  <SelectItem value="3">3</SelectItem>
-                                  <SelectItem value="4">4</SelectItem>
-                                  <SelectItem value="5">5</SelectItem>
-                                  <SelectItem value="6">6</SelectItem>
-                                </SelectContent>
-                              </Select>
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-3 justify-center">
+                                <label className="text-sm font-medium text-gray-700">
+                                  Número de refeições por dia:
+                                </label>
+                                <Select 
+                                  value={selectedMealCount.toString()} 
+                                  onValueChange={(value) => setSelectedMealCount(parseInt(value))}
+                                >
+                                  <SelectTrigger className="w-24">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">1</SelectItem>
+                                    <SelectItem value="2">2</SelectItem>
+                                    <SelectItem value="3">3</SelectItem>
+                                    <SelectItem value="4">4</SelectItem>
+                                    <SelectItem value="5">5</SelectItem>
+                                    <SelectItem value="6">6</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                               
                               <Button 
                                 onClick={() => updateMealCount(selectedMealCount)}
                                 disabled={isUpdatingMealCount}
-                                variant="outline"
-                                className="ml-auto"
+                                className="w-full touch-target"
                               >
                                 {isUpdatingMealCount ? (
                                   <>
@@ -2576,38 +2572,39 @@ export function UserDashboard() {
                 )}
 
                 {/* Campo de Entrada do Chat */}
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <Label htmlFor="ai-chat-input">Faça sua pergunta para a IA Coach:</Label>
-                  <div className="flex gap-3">
-                    <Textarea
-                      id="ai-chat-input"
-                      placeholder="Ex: Devo tomar creatina? Como funciona e qual a dosagem recomendada?"
-                      value={aiChatMessage}
-                      onChange={(e) => setAiChatMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          processAiChat();
-                        }
-                      }}
-                      className="flex-1 min-h-24"
-                      disabled={isProcessingAiChat}
-                    />
-                    <Button 
-                      onClick={processAiChat}
-                      disabled={!aiChatMessage.trim() || isProcessingAiChat}
-                      className="px-6 self-end"
-                    >
-                      {isProcessingAiChat ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Heart className="w-4 h-4 mr-2" />
-                          Perguntar
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  <Textarea
+                    id="ai-chat-input"
+                    placeholder="Ex: Devo tomar creatina? Como funciona e qual a dosagem recomendada?"
+                    value={aiChatMessage}
+                    onChange={(e) => setAiChatMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        processAiChat();
+                      }
+                    }}
+                    className="w-full min-h-24"
+                    disabled={isProcessingAiChat}
+                  />
+                  <Button 
+                    onClick={processAiChat}
+                    disabled={!aiChatMessage.trim() || isProcessingAiChat}
+                    className="w-full touch-target"
+                  >
+                    {isProcessingAiChat ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <Heart className="w-4 h-4 mr-2" />
+                        Perguntar
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
