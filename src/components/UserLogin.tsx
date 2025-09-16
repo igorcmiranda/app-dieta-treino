@@ -79,6 +79,9 @@ export function UserLogin() {
     // Após pagamento bem-sucedido, fazer login automático
     // Em um app real, você criaria o usuário no banco de dados
     // Por enquanto, vamos simular um login bem-sucedido
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    
     const newUser = {
       id: 'new-user-' + Date.now(),
       name: 'Novo Usuário',
@@ -95,7 +98,9 @@ export function UserLogin() {
         canDowngrade: false,
         downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000), // 4 meses
         dietsUsedThisMonth: 0,
-        workoutsUsedThisMonth: 0
+        workoutsUsedThisMonth: 0,
+        bodyAnalysesUsedThisMonth: 0,
+        monthlyResetDate: nextMonth
       }
     };
     
