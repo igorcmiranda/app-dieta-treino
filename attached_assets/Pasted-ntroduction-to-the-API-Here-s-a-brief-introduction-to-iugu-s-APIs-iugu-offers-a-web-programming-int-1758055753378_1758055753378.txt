@@ -1,0 +1,62 @@
+ntroduction to the API
+Here’s a brief introduction to iugu's APIs.
+iugu offers a web programming interface in the REST model, allowing efficient interaction with its system. With this API, you can execute commands, check configurations, and synchronize data with your own systems.
+
+Communication is done through the base address https://api.iugu.com, always using the secure protocol https://. API versions are organized into specific directories, appended to the base address (e.g., https://api.iugu.com/v1).
+
+Postman Collection
+
+In addition to references at dev.iugu.com/reference, we provide a Postman Collection (for now, on PT-BR version):
+
+ Open in Postman
+Updated on 19/02/25
+
+Release Notes
+
+New Third Transfers' parameter
+
+scheduled_date — Schedule PIX transfers.
+New endpoint
+
+Cancel scheduled PIX
+Authentication
+
+Authentication in iugu is performed via an API key, which allows the system to identify your account and grant the necessary permissions to communicate with iugu on behalf of the associated account. Learn more.
+
+Production and Testing
+
+The distinction between a production or testing environment is made through the api_token used during the request. Create an api_token and use it as needed.
+
+🚧
+Warning
+
+The test endpoint is subject to a usage limit of 50 requests per minute. Requests that exceed this limit will receive a response with the HTTP 429 - Too Many Requests status code.
+
+We recommend using Mocks in automated tests to avoid restrictions and ensure greater control over your validation flows. Learn more.
+iugu's Outbound IP
+
+For those managing IPs in their Firewall, for example, consider allowing 54.207.210.151.
+
+Errors Table
+
+We also provide a table of the main errors and their causes for consultation at this link.
+
+Recipes
+
+Access our Recipes Library. A practical and dynamic way to use our APIs for specific purposes.
+
+Pagination
+
+For listing APIs, pagination parameters are used. Learn more.
+
+Updates
+
+Whenever a new feature or update occurs, we share the details on our Updates Page.
+
+iugu Status
+
+Get real-time access to iugu's service status at status.iugu.com.
+
+Get Support
+
+If you need technical assistance, contact our Technical Support.
