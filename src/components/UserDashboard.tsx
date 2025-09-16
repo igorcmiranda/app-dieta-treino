@@ -618,9 +618,8 @@ export function UserDashboard() {
     if (!aiChatMessage.trim() || !currentUser) return;
 
     // Verificar se usuário tem assinatura premium
-    if (!hasActiveSubscription(currentUser) || currentUser.subscription?.plan !== 'premium') {
-      setSubscriptionFeature('Chat com IA Coach para dúvidas sobre suplementos e hormônios');
-      setShowSubscriptionPlans(true);
+    if (currentUser.subscription?.plan !== 'premium') {
+      alert('Vire um usuário premium para usar esse recurso');
       return;
     }
 
@@ -1150,7 +1149,7 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden" style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden" style={{ paddingTop: 'max(env(safe-area-inset-top), 3rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
       <div className="max-w-7xl mx-auto px-4 overflow-x-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
@@ -1320,7 +1319,7 @@ export function UserDashboard() {
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="w-full">
-            <TabsList className="grid grid-cols-4 sm:grid-cols-5 gap-1 p-1 w-full overflow-x-hidden max-w-full">
+            <TabsList className="grid grid-cols-5 gap-1 p-1 w-full overflow-x-hidden max-w-full">
             <TabsTrigger value="profile" className="flex items-center justify-center touch-target px-3 py-3">
               <User className="w-5 h-5" />
             </TabsTrigger>
@@ -1333,11 +1332,9 @@ export function UserDashboard() {
             <TabsTrigger value="results" className="flex items-center justify-center touch-target px-3 py-3">
               <Target className="w-5 h-5" />
             </TabsTrigger>
-            {currentUser && hasActiveSubscription(currentUser) && (
               <TabsTrigger value="ai-chat" className="flex items-center justify-center touch-target px-3 py-3">
                 <Heart className="w-5 h-5" />
               </TabsTrigger>
-            )}
           </TabsList>
           </div>
 
