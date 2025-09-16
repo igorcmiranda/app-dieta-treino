@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Configuração para deployment em servidor de produção
+  // Configuração para Capacitor iOS - export estático necessário
+  output: 'export',
+  trailingSlash: true,
+  distDir: 'out',
+  
+  devIndicators: false, // Remove widget de desenvolvimento Next.js
   
   // Allow ESLint and TypeScript to run during builds for production quality
   eslint: {
@@ -11,10 +16,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
 
-  // Configurações de headers e rewrites para servidor de produção
+  // Configurações de headers e rewrites removidas para compatibilidade com static export
   
-  // Configuração de imagens para principais provedores (otimização habilitada para servidor de produção)
+  // Configuração de imagens para principais provedores (desabilitada otimização para static export/Capacitor)
   images: {
+    unoptimized: true,
     remotePatterns: [
       // Unsplash - Banco de imagens gratuitas
       {

@@ -46,7 +46,7 @@
         256,
         384
       ],
-      "path": "/_next/image",
+      "path": "/_next/image/",
       "loader": "default",
       "loaderFile": "",
       "domains": [],
@@ -197,11 +197,9 @@
           "hostname": "localhost"
         }
       ],
-      "unoptimized": false
+      "unoptimized": true
     },
-    "devIndicators": {
-      "position": "bottom-left"
-    },
+    "devIndicators": false,
     "onDemandEntries": {
       "maxInactiveAge": 60000,
       "pagesBufferLength": 5
@@ -211,7 +209,7 @@
     },
     "basePath": "",
     "sassOptions": {},
-    "trailingSlash": false,
+    "trailingSlash": true,
     "i18n": null,
     "productionBrowserSourceMaps": false,
     "excludeDefaultMomentLocales": true,
@@ -227,6 +225,7 @@
     "compiler": {},
     "expireTime": 31536000,
     "staticPageGenerationTimeout": 60,
+    "output": "export",
     "modularizeImports": {
       "@mui/icons-material": {
         "transform": "@mui/icons-material/{{member}}"
