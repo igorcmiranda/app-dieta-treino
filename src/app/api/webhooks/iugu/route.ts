@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-export const dynamic = 'force-dynamic';
-
 // Webhook para receber atualizações da Iugu
 export async function POST(req: NextRequest) {
   try {

@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CreditCard, Shield, CheckCircle, Lock, ArrowLeft, Loader2, Star, Users, Zap } from 'lucide-react';
+import { AlertCircle, CreditCard, Shield, CheckCircle, Lock, ArrowLeft, Loader2, Star, Users, Zap, Smartphone, ExternalLink } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { getApiConfig, apiCall } from '@/utils/api-config';
+import { CompactDemoModeBanner } from './DemoModeBanner';
 
 declare global {
   interface Window {
@@ -56,9 +58,25 @@ export function IuguCheckout({
   });
   const [step, setStep] = useState<'customer' | 'payment'>('customer');
   const [processing, setProcessing] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [apiConfig, setApiConfig] = useState<ReturnType<typeof getApiConfig> | null>(null);
 
-  // Carregar SDK da Iugu
+  // Carregar configuração da API e SDK
   useEffect(() => {
+    const config = getApiConfig();
+    setApiConfig(config);
+    setIsDemoMode(config.isDemo || config.isStaticBuild);
+    
+    console.log('[API CONFIG]', config);
+    
+    // Só carregar SDK se não estiver em modo demo
+    if (config.isDemo || !config.hasApiSupport) {
+      setIuguLoaded(true); // Simular carregamento para demo
+      console.log('[IUGU] Modo demonstração ativado');
+      return;
+    }
+    
+    // Carregar SDK da Iugu apenas se APIs estiverem disponíveis
     const script = document.createElement('script');
     script.src = 'https://js.iugu.com/v2';
     script.async = true;
@@ -125,6 +143,23 @@ export function IuguCheckout({
     }
   };
 
+  // Função para simular criação de customer no modo demo
+  const createCustomerDemo = async () => {
+    setLoading(true);
+    
+    // Simular delay de API
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setCustomerId('demo-customer-id');
+    setStep('payment');
+    toast({
+      title: "✅ Dados confirmados (Demo)",
+      description: "Modo demonstração ativo. Agora insira dados fictícios do cartão."
+    });
+    setLoading(false);
+    return true;
+  };
+
   const createCustomer = async () => {
     if (!formData.cpf || !formData.phone) {
       setErrors({ 
@@ -134,9 +169,14 @@ export function IuguCheckout({
       return false;
     }
 
+    // Se estiver em modo demo, usar função simulada
+    if (isDemoMode) {
+      return createCustomerDemo();
+    }
+
     setLoading(true);
     try {
-      const response = await fetch('/api/iugu/customers', {
+      const response = await apiCall('/api/iugu/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -145,6 +185,11 @@ export function IuguCheckout({
           cpf_cnpj: formData.cpf.replace(/\D/g, ''),
           phone: formData.phone.replace(/\D/g, '')
         })
+      }, {
+        // Resposta demo para fallback
+        id: 'demo-customer-fallback',
+        email: userEmail,
+        name: userName
       });
 
       const customer = await response.json();
@@ -295,6 +340,29 @@ export function IuguCheckout({
     validateField(name, formattedValue);
   };
 
+  // Função para simular pagamento no modo demo
+  const handleDemoPayment = async () => {
+    setProcessing(true);
+    
+    // Simular delay de processamento
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    toast({
+      title: "🎉 Demonstração de Pagamento",
+      description: "Esta é uma simulação para o app iOS. Em produção, use a versão web para pagamentos reais."
+    });
+    
+    onSuccess({
+      id: 'demo-subscription-' + Date.now(),
+      status: 'active',
+      plan: planIdentifier,
+      demo: true,
+      message: 'Assinatura demonstrativa ativada'
+    });
+    
+    setProcessing(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -307,41 +375,52 @@ export function IuguCheckout({
     const validationErrors: {[key: string]: string} = {};
     const requiredFields = ['number', 'expiration', 'verification_value', 'full_name'];
     
-    requiredFields.forEach(field => {
-      const value = formData[field as keyof typeof formData];
-      
-      switch (field) {
-        case 'number':
-          const cleanNumber = value.replace(/\s/g, '');
-          if (cleanNumber.length < 13 || cleanNumber.length > 19) {
-            validationErrors.number = 'Número do cartão inválido';
-          }
-          break;
-        case 'expiration':
-          if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(value)) {
-            validationErrors.expiration = 'Data de expiração inválida (MM/AA)';
-          } else {
-            // Validar se não está expirado
-            const [month, year] = value.split('/');
-            const expDate = new Date(2000 + parseInt(year), parseInt(month) - 1);
-            const now = new Date();
-            if (expDate < now) {
-              validationErrors.expiration = 'Cartão expirado';
+    // Validação mais flexível no modo demo
+    if (!isDemoMode) {
+      requiredFields.forEach(field => {
+        const value = formData[field as keyof typeof formData];
+        
+        switch (field) {
+          case 'number':
+            const cleanNumber = value.replace(/\s/g, '');
+            if (cleanNumber.length < 13 || cleanNumber.length > 19) {
+              validationErrors.number = 'Número do cartão inválido';
             }
-          }
-          break;
-        case 'verification_value':
-          if (!/^\d{3,4}$/.test(value)) {
-            validationErrors.verification_value = 'CVV inválido';
-          }
-          break;
-        case 'full_name':
-          if (value.length < 3 || !/^[a-zA-ZÀ-ÿ\s]+$/.test(value)) {
-            validationErrors.full_name = 'Nome do portador é obrigatório';
-          }
-          break;
+            break;
+          case 'expiration':
+            if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(value)) {
+              validationErrors.expiration = 'Data de expiração inválida (MM/AA)';
+            } else {
+              // Validar se não está expirado
+              const [month, year] = value.split('/');
+              const expDate = new Date(2000 + parseInt(year), parseInt(month) - 1);
+              const now = new Date();
+              if (expDate < now) {
+                validationErrors.expiration = 'Cartão expirado';
+              }
+            }
+            break;
+          case 'verification_value':
+            if (!/^\d{3,4}$/.test(value)) {
+              validationErrors.verification_value = 'CVV inválido';
+            }
+            break;
+          case 'full_name':
+            if (value.length < 3 || !/^[a-zA-ZÀ-ÿ\s]+$/.test(value)) {
+              validationErrors.full_name = 'Nome do portador é obrigatório';
+            }
+            break;
+        }
+      });
+    } else {
+      // Validação mínima no modo demo
+      if (!formData.full_name || formData.full_name.length < 2) {
+        validationErrors.full_name = 'Nome é obrigatório';
       }
-    });
+      if (!formData.number || formData.number.length < 10) {
+        validationErrors.number = 'Número do cartão é obrigatório';
+      }
+    }
 
     // Atualizar estado apenas uma vez e verificar erros localmente
     setErrors(validationErrors);
@@ -357,6 +436,11 @@ export function IuguCheckout({
 
     setProcessing(true);
     setErrors({});
+    
+    // Se estiver em modo demo, usar fluxo simulado
+    if (isDemoMode) {
+      return handleDemoPayment();
+    }
 
     try {
       const cardData = {
@@ -564,6 +648,9 @@ export function IuguCheckout({
                 </CardHeader>
 
                 <CardContent className="p-6">
+                  {/* Banner de modo demo */}
+                  <CompactDemoModeBanner className="mb-4" />
+                  
                   <form className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-sm font-medium">Nome Completo</Label>
@@ -677,6 +764,9 @@ export function IuguCheckout({
                 </CardHeader>
 
                 <CardContent className="p-6">
+                  {/* Banner de modo demo */}
+                  <CompactDemoModeBanner className="mb-4" />
+                  
                   <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Número do Cartão */}
                     <div className="space-y-2">

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 // Criar e gerenciar customers na Iugu
 export async function POST(req: NextRequest) {
   try {

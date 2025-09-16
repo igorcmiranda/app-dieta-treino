@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 // Criar e gerenciar assinaturas na Iugu
 export async function POST(req: NextRequest) {
   try {

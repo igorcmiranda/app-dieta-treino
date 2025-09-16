@@ -1,10 +1,16 @@
 import type { NextConfig } from "next";
 
+// Configuração híbrida para suportar tanto builds estáticos (iOS) quanto dinâmicos (web)
+const isIOSBuild = process.env.BUILD_TARGET === 'ios';
+
 const nextConfig: NextConfig = {
-  // Configuração para Capacitor iOS - export estático necessário
-  output: 'export',
+  // Usar static export apenas para builds iOS/Capacitor
+  // Em desenvolvimento e produção web, permitir APIs dinâmicas
+  output: isIOSBuild ? 'export' : undefined,
   trailingSlash: true,
-  // distDir removido para evitar conflitos em desenvolvimento
+  
+  // Para builds iOS estáticos, usar diretório personalizado
+  distDir: isIOSBuild ? 'out' : '.next',
   
   devIndicators: false, // Remove widget de desenvolvimento Next.js
   

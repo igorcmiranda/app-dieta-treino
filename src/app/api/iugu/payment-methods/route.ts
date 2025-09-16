@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 // Gerenciar métodos de pagamento
 export async function POST(req: NextRequest) {
   try {
