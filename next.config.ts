@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // Configuração para Capacitor iOS - export estático necessário
   output: 'export',
   trailingSlash: true,
-  distDir: 'out',
+  // distDir removido para evitar conflitos em desenvolvimento
   
   devIndicators: false, // Remove widget de desenvolvimento Next.js
   
