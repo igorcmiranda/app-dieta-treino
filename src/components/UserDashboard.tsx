@@ -47,7 +47,8 @@ import {
   Weight,
   Check,
   Save,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 export function UserDashboard() {
@@ -110,8 +111,11 @@ export function UserDashboard() {
   const [extractedMeals, setExtractedMeals] = useState<MealEntry[]>([]);
   const [showExtractedReview, setShowExtractedReview] = useState(false);
   const [dietChatMessage, setDietChatMessage] = useState('');
+  const [selectedMealToEdit, setSelectedMealToEdit] = useState('');
   const [dietChatHistory, setDietChatHistory] = useState<Array<{user: string, ai: string}>>([]);
   const [isProcessingDietChat, setIsProcessingDietChat] = useState(false);
+  const [selectedMealCount, setSelectedMealCount] = useState(6);
+  const [isUpdatingMealCount, setIsUpdatingMealCount] = useState(false);
   const [aiChatMessage, setAiChatMessage] = useState('');
   const [aiChatHistory, setAiChatHistory] = useState<Array<{user: string, ai: string}>>([]);
   const [isProcessingAiChat, setIsProcessingAiChat] = useState(false);
@@ -317,7 +321,10 @@ export function UserDashboard() {
 
   // Função para processar chat de edição de dieta
   const processDietChat = async () => {
-    if (!dietChatMessage.trim() || !currentUser) return;
+    if (!dietChatMessage.trim() || !selectedMealToEdit || !currentUser) {
+      alert('Por favor, selecione uma refeição e descreva o que deseja alterar.');
+      return;
+    }
     
     // Buscar ou criar plano de dieta se não existir
     let dietPlan = currentDietPlan || getDietPlanByUserId(currentUser.id);
@@ -349,8 +356,10 @@ export function UserDashboard() {
       setIsProcessingDietChat(false);
       return;
     }
-    const userMessage = dietChatMessage.trim();
+    const userMessage = `${selectedMealToEdit}: ${dietChatMessage.trim()}`;
+    const changeDescription = dietChatMessage.trim();
     setDietChatMessage('');
+    setSelectedMealToEdit('');
 
     try {
       // Simular processamento de IA (em produção, seria OpenAI API)
@@ -362,173 +371,77 @@ export function UserDashboard() {
       const message = userMessage.toLowerCase();
       let modificacaoFeita = false;
 
-      // LÓGICA SIMPLES E DIRETA QUE FUNCIONA
-      console.log('🟠 Processando solicitação do usuário:', message);
+      // NOVA LÓGICA - USA A REFEIÇÃO SELECIONADA NA DROPDOWN
+      console.log('🟠 Processando solicitação:', {
+        selectedMeal: selectedMealToEdit,
+        changeDescription: changeDescription,
+        fullMessage: message
+      });
       
-      // DETECÇÃO SIMPLES E DIRETA
-      if (message.includes('troque') || message.includes('trocar') || message.includes('substitua') || message.includes('substituir')) {
-        console.log('🟥 ✅ Detectou TROCA/SUBSTITUIÇÃO');
+      // Encontrar a refeição selecionada pelo nome exato
+      const targetMealIndex = updatedPlan.meals.findIndex((meal: any) => 
+        meal.meal.toLowerCase() === selectedMealToEdit.toLowerCase()
+      );
+      
+      if (targetMealIndex !== -1 && changeDescription) {
+        console.log(`🟩 ✅ ENCONTROU REFEIÇÃO: "${changeDescription}" (index: ${targetMealIndex})`);
+        console.log('🟪 ALIMENTOS ANTES:', updatedPlan.meals[targetMealIndex].foods);
         
-        let targetMealIndex = -1;
-        let mealName = '';
+        // Analisar o que o usuário quer fazer baseado na descrição
+        let newFoods = [];
+        const description = changeDescription.toLowerCase();
         
-        // Procurar por "lanche da manha" ou variações
-        if (message.includes('lanche da manha') || message.includes('lanche manha') || message.includes('lanche da manhã')) {
-          console.log('🟦 ✅ Detectou LANCHE DA MANHA');
-          
-          // Buscar o índice exato do lanche da manhã
-          for (let i = 0; i < updatedPlan.meals.length; i++) {
-            const meal = updatedPlan.meals[i];
-            const mealNameLower = meal.meal.toLowerCase();
-            console.log(`🟧 Verificando refeição ${i}: "${meal.meal}" (normalizado: "${mealNameLower}")`);
-            
-            if (mealNameLower.includes('lanche') && (mealNameLower.includes('manhã') || mealNameLower.includes('manha'))) {
-              targetMealIndex = i;
-              mealName = meal.meal;
-              console.log(`🟨 ✅ ENCONTROU! Índice: ${i}, Nome: "${mealName}"`);
-              break;
-            }
-          }
-        }
-        
-        // Se encontrou a refeição, fazer a substituição
-        if (targetMealIndex !== -1) {
-          console.log(`🟩 ✅ VAI SUBSTITUIR: "${mealName}" (index: ${targetMealIndex})`);
-          console.log('🟪 ALIMENTOS ANTES:', updatedPlan.meals[targetMealIndex].foods);
-          
-          // Identificar novos alimentos
-          let newFoods = [];
-          
-          if (message.includes('whey') && (message.includes('hipercalorico') || message.includes('hipercalórico'))) {
+        // Detectar alimentos específicos mencionados
+        if (description.includes('whey') && (description.includes('hipercalorico') || description.includes('hipercalórico'))) {
+          newFoods = [
+            { food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 },
+            { food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }
+          ];
+        } else if (description.includes('whey')) {
+          newFoods = [{ food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 }];
+        } else if (description.includes('hipercalorico') || description.includes('hipercalórico')) {
+          newFoods = [{ food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }];
+        } else if (description.includes('banana')) {
+          newFoods = [{ food: 'Banana', quantity: '1 unidade média', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 }];
+        } else if (description.includes('aveia')) {
+          newFoods = [{ food: 'Aveia', quantity: '50g', calories: 190, protein: 7, carbs: 32, fat: 3.5 }];
+        } else {
+          // Análise inteligente baseada no objetivo do usuário
+          const userGoal = currentUser?.profile?.goal || 'manter-peso-perder-gordura';
+          if (userGoal.includes('ganhar')) {
             newFoods = [
               { food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 },
-              { food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }
+              { food: 'Aveia', quantity: '40g', calories: 152, protein: 5.6, carbs: 25.6, fat: 2.8 },
+              { food: 'Banana', quantity: '1 média', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 }
             ];
-            console.log('🟠 ✅ Identificou: WHEY + HIPERCALÓRICO');
-          } else if (message.includes('whey')) {
-            newFoods = [{ food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 }];
-            console.log('🟡 ✅ Identificou: WHEY');
-          } else if (message.includes('hipercalorico') || message.includes('hipercalórico')) {
-            newFoods = [{ food: 'Hipercalórico', quantity: '40g', calories: 150, protein: 8, carbs: 25, fat: 2 }];
-            console.log('🟢 ✅ Identificou: HIPERCALÓRICO');
+          } else if (userGoal.includes('perder')) {
+            newFoods = [
+              { food: 'Clara de ovo', quantity: '3 unidades', calories: 51, protein: 10.8, carbs: 0.72, fat: 0.17 },
+              { food: 'Aveia', quantity: '30g', calories: 114, protein: 4.2, carbs: 19.2, fat: 2.1 }
+            ];
           } else {
-            newFoods = [{ food: 'Alimento Substituto', quantity: '1 porção', calories: 100, protein: 5, carbs: 15, fat: 2 }];
-            console.log('🟣 ✅ Usando alimento genérico');
-          }
-          
-          console.log('🟤 NOVOS ALIMENTOS:', newFoods);
-          
-          // FAZER A SUBSTITUIÇÃO REAL - ESTA É A PARTE CRÍTICA!
-          updatedPlan.meals[targetMealIndex].foods = [...newFoods]; // Cria nova referência
-          modificacaoFeita = true;
-          
-          console.log('🔥 ✅ SUBSTITUIÇÃO REALIZADA!');
-          console.log('🟥 ALIMENTOS DEPOIS:', updatedPlan.meals[targetMealIndex].foods);
-          console.log('🟦 MODIFICAÇÃO FEITA:', modificacaoFeita);
-          
-          const foodNames = newFoods.map(f => f.food).join(' e ');
-          aiResponse = `✅ SUCESSO! ${mealName} foi completamente substituído por: ${foodNames}. Verifique a aba Dieta para ver as mudanças!`;
-          
-        } else {
-          console.log('🚳 ❌ NÃO ENCONTROU a refeição');
-          aiResponse = '⚠️ Não consegui identificar qual refeição você quer modificar. Refeições disponíveis: ' + updatedPlan.meals.map((m: any) => m.meal).join(', ');
-        }
-      }
-      
-      // 2. ADIÇÃO DE ALIMENTOS
-      else if ((message.includes('adicione') || message.includes('adicionar') || message.includes('inclua') || message.includes('incluir')) &&
-               (message.includes('lanche') || message.includes('café') || message.includes('almoço') || message.includes('jantar') || message.includes('ceia'))) {
-        
-        let targetMealIndex = -1;
-        let mealName = '';
-        
-        if (message.includes('lanche da manhã')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('lanche da manhã'));
-          mealName = 'Lanche da Manhã';
-        } else if (message.includes('café da manhã') || message.includes('cafe da manha')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('café da manhã') || meal.meal.toLowerCase().includes('cafe'));
-          mealName = 'Café da Manhã';
-        } else if (message.includes('almoço')) {
-          targetMealIndex = updatedPlan.meals.findIndex((meal: any) => meal.meal.toLowerCase().includes('almoço'));
-          mealName = 'Almoço';
-        }
-        
-        if (targetMealIndex !== -1) {
-          let newFood = null;
-          
-          if (message.includes('banana')) {
-            newFood = { food: 'Banana', quantity: '1 unidade média', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 };
-          } else if (message.includes('whey')) {
-            newFood = { food: 'Whey Protein', quantity: '30g', calories: 120, protein: 25, carbs: 2, fat: 1 };
-          }
-          
-          if (newFood) {
-            updatedPlan.meals[targetMealIndex].foods.push(newFood);
-            modificacaoFeita = true;
-            aiResponse = `✅ ${newFood.food} adicionado ao ${mealName}! O alimento foi incluído no seu plano com sucesso.`;
+            newFoods = [
+              { food: 'Iogurte natural', quantity: '150g', calories: 90, protein: 8, carbs: 11, fat: 2.3 },
+              { food: 'Granola', quantity: '20g', calories: 95, protein: 2.5, carbs: 15, fat: 3 }
+            ];
           }
         }
-      }
-      
-      // 3. REDUÇÃO DE CALORIAS
-      else if (message.includes('reduz') || message.includes('diminu') || message.includes('emagrec') || message.includes('menos caloria')) {
-        updatedPlan.meals.forEach((meal: any) => {
-          meal.foods.forEach((food: any) => {
-            if (food.food.toLowerCase().includes('arroz') || food.food.toLowerCase().includes('pão') || food.food.toLowerCase().includes('batata')) {
-              food.calories = Math.round(food.calories * 0.8);
-              food.carbs = Math.round(food.carbs * 0.8);
-            }
-          });
-        });
+        
+        // Fazer substituição completa
+        updatedPlan.meals[targetMealIndex].foods = [...newFoods];
         modificacaoFeita = true;
-        aiResponse = `✅ Calorias reduzidas! Diminui as porções de carboidratos em 20% para promover emagrecimento saudável.`;
-      }
-      
-      // 4. CASO GENÉRICO - SEMPRE TENTAR FAZER ALGUMA MODIFICAÇÃO
-      else {
-        // Tentar identificar qualquer refeição mencionada e fazer alguma melhoria
-        let mealFound = false;
         
-        updatedPlan.meals.forEach((meal: any, index: number) => {
-          const mealNameLower = meal.meal.toLowerCase();
-          if (message.includes(mealNameLower.split(' ')[0]) || 
-              message.includes('manhã') && mealNameLower.includes('manhã') ||
-              message.includes('tarde') && mealNameLower.includes('tarde') ||
-              message.includes('noite') && mealNameLower.includes('jantar')) {
-            
-            // Adicionar um alimento saudável genérico
-            meal.foods.push({
-              food: 'Complemento Nutricional',
-              quantity: '1 porção',
-              calories: 80,
-              protein: 4,
-              carbs: 12,
-              fat: 1.5
-            });
-            mealFound = true;
-            modificacaoFeita = true;
-          }
-        });
+        console.log('🔥 ✅ MODIFICAÇÃO REALIZADA!');
+        console.log('🟥 ALIMENTOS DEPOIS:', updatedPlan.meals[targetMealIndex].foods);
+        console.log('🟦 MODIFICAÇÃO FEITA:', modificacaoFeita);
         
-        if (!mealFound) {
-          // Se não identificou refeição específica, melhorar o café da manhã como padrão
-          const breakfastIndex = updatedPlan.meals.findIndex((meal: any) => 
-            meal.meal.toLowerCase().includes('café') || meal.meal.toLowerCase().includes('manhã'));
-          
-          if (breakfastIndex !== -1) {
-            updatedPlan.meals[breakfastIndex].foods.push({
-              food: 'Suplemento Proteico',
-              quantity: '1 dose',
-              calories: 100,
-              protein: 20,
-              carbs: 5,
-              fat: 1
-            });
-            modificacaoFeita = true;
-          }
-        }
+        const foodNames = newFoods.map(f => f.food).join(' e ');
+        const userGoal = currentUser?.profile?.goal || 'manter-peso-perder-gordura';
+        aiResponse = `✅ ${selectedMealToEdit} foi atualizado com: ${foodNames}. As quantidades foram calculadas para atingir suas metas nutricionais baseadas no seu objetivo (${userGoal})!`;
         
-        aiResponse = `✅ Dieta otimizada conforme sua solicitação! Fiz melhorias nutricionais inteligentes baseadas no seu pedido e as mudanças foram aplicadas ao plano.`;
+      } else {
+        console.log('🚳 ❌ NÃO ENCONTROU a refeição selecionada');
+        aiResponse = `❌ Erro: Não foi possível encontrar a refeição "${userMessage}". Tente novamente.`;
       }
       
       // Se não fez nenhuma modificação, tentar algo genérico
@@ -597,6 +510,106 @@ export function UserDashboard() {
       }]);
     } finally {
       setIsProcessingDietChat(false);
+    }
+  };
+
+  // Função para atualizar número de refeições (1-6)
+  const updateMealCount = async (mealCount: number) => {
+    if (!currentUser || mealCount < 1 || mealCount > 6) {
+      alert('Número de refeições deve ser entre 1 e 6.');
+      return;
+    }
+
+    // Verificar assinatura
+    if (!hasActiveSubscription(currentUser)) {
+      setSubscriptionFeature('Personalização do número de refeições');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    setIsUpdatingMealCount(true);
+
+    try {
+      // Obter plano atual
+      let dietPlan = currentDietPlan || getDietPlanByUserId(currentUser.id);
+      if (!dietPlan) {
+        alert('Por favor, gere seu plano de dieta primeiro no Dashboard.');
+        setIsUpdatingMealCount(false);
+        return;
+      }
+
+      // Calcular calorias e macros por refeição
+      const dailyCalories = dietPlan.dailyCalories || 2000;
+      const caloriesPerMeal = Math.round(dailyCalories / mealCount);
+      const proteinPerMeal = Math.round((dietPlan.macros?.protein || 120) / mealCount);
+      const carbsPerMeal = Math.round((dietPlan.macros?.carbs || 200) / mealCount);
+      const fatPerMeal = Math.round((dietPlan.macros?.fat || 70) / mealCount);
+
+      // Nomes e horários das refeições baseados na quantidade
+      const mealTemplates = {
+        1: [{ name: 'Refeição Principal', time: '12:00' }],
+        2: [{ name: 'Café da Manhã', time: '08:00' }, { name: 'Jantar', time: '19:00' }],
+        3: [{ name: 'Café da Manhã', time: '08:00' }, { name: 'Almoço', time: '12:00' }, { name: 'Jantar', time: '19:00' }],
+        4: [{ name: 'Café da Manhã', time: '07:00' }, { name: 'Almoço', time: '12:00' }, { name: 'Lanche da Tarde', time: '15:30' }, { name: 'Jantar', time: '19:00' }],
+        5: [{ name: 'Café da Manhã', time: '07:00' }, { name: 'Lanche da Manhã', time: '10:00' }, { name: 'Almoço', time: '12:30' }, { name: 'Lanche da Tarde', time: '15:30' }, { name: 'Jantar', time: '19:00' }],
+        6: [{ name: 'Café da Manhã', time: '07:00' }, { name: 'Lanche da Manhã', time: '10:00' }, { name: 'Almoço', time: '12:30' }, { name: 'Lanche da Tarde', time: '15:30' }, { name: 'Jantar', time: '19:00' }, { name: 'Ceia', time: '21:30' }]
+      };
+
+      // Criar alimentos baseados no objetivo do usuário
+      const userGoal = currentUser.profile?.goal || 'manter-peso-perder-gordura';
+      const generateMealFoods = (mealName: string) => {
+        if (userGoal.includes('ganhar')) {
+          // Foco em ganho de massa
+          return [
+            { food: 'Proteína magra', quantity: `${Math.round(proteinPerMeal/4)}g`, calories: Math.round(caloriesPerMeal * 0.4), protein: Math.round(proteinPerMeal * 0.4), carbs: 5, fat: Math.round(fatPerMeal * 0.3) },
+            { food: 'Carboidrato complexo', quantity: `${Math.round(carbsPerMeal/4)}g`, calories: Math.round(caloriesPerMeal * 0.4), protein: Math.round(proteinPerMeal * 0.2), carbs: Math.round(carbsPerMeal * 0.6), fat: Math.round(fatPerMeal * 0.2) },
+            { food: 'Gordura saudável', quantity: `${Math.round(fatPerMeal/9)}g`, calories: Math.round(caloriesPerMeal * 0.2), protein: Math.round(proteinPerMeal * 0.4), carbs: Math.round(carbsPerMeal * 0.4), fat: Math.round(fatPerMeal * 0.5) }
+          ];
+        } else if (userGoal.includes('perder')) {
+          // Foco em emagrecimento
+          return [
+            { food: 'Proteína magra', quantity: `${Math.round(proteinPerMeal/3.5)}g`, calories: Math.round(caloriesPerMeal * 0.5), protein: Math.round(proteinPerMeal * 0.6), carbs: 3, fat: Math.round(fatPerMeal * 0.3) },
+            { food: 'Vegetais', quantity: `${Math.round(carbsPerMeal/2)}g`, calories: Math.round(caloriesPerMeal * 0.3), protein: Math.round(proteinPerMeal * 0.2), carbs: Math.round(carbsPerMeal * 0.5), fat: Math.round(fatPerMeal * 0.2) },
+            { food: 'Carboidrato leve', quantity: `${Math.round(carbsPerMeal/5)}g`, calories: Math.round(caloriesPerMeal * 0.2), protein: Math.round(proteinPerMeal * 0.2), carbs: Math.round(carbsPerMeal * 0.5), fat: Math.round(fatPerMeal * 0.5) }
+          ];
+        } else {
+          // Manutenção de peso
+          return [
+            { food: 'Proteína equilibrada', quantity: `${Math.round(proteinPerMeal/4)}g`, calories: Math.round(caloriesPerMeal * 0.35), protein: Math.round(proteinPerMeal * 0.4), carbs: Math.round(carbsPerMeal * 0.2), fat: Math.round(fatPerMeal * 0.3) },
+            { food: 'Carboidrato integral', quantity: `${Math.round(carbsPerMeal/4)}g`, calories: Math.round(caloriesPerMeal * 0.4), protein: Math.round(proteinPerMeal * 0.3), carbs: Math.round(carbsPerMeal * 0.5), fat: Math.round(fatPerMeal * 0.2) },
+            { food: 'Fonte de gordura', quantity: `${Math.round(fatPerMeal/8)}g`, calories: Math.round(caloriesPerMeal * 0.25), protein: Math.round(proteinPerMeal * 0.3), carbs: Math.round(carbsPerMeal * 0.3), fat: Math.round(fatPerMeal * 0.5) }
+          ];
+        }
+      };
+
+      // Criar novo plano com o número de refeições solicitado
+      const newMeals = mealTemplates[mealCount as keyof typeof mealTemplates].map(template => ({
+        meal: template.name,
+        time: template.time,
+        foods: generateMealFoods(template.name)
+      }));
+
+      const updatedPlan = {
+        ...dietPlan,
+        meals: newMeals,
+        updatedAt: new Date()
+      };
+
+      // Salvar plano atualizado
+      addDietPlan(updatedPlan);
+      setForceUpdate(prev => prev + 1);
+      
+      console.log(`✅ Dieta atualizada para ${mealCount} refeições:`, updatedPlan);
+      alert(`✅ Dieta personalizada criada com ${mealCount} refeições! ${mealCount < 4 ? 'Lembre-se: menos refeições significa porções maiores.' : ''} Verifique a aba Dieta.`);
+      
+      // Ir para aba dieta automaticamente
+      setTimeout(() => setActiveTab('diet'), 500);
+      
+    } catch (error) {
+      console.error('Erro ao atualizar número de refeições:', error);
+      alert('❌ Erro ao personalizar dieta. Tente novamente.');
+    } finally {
+      setIsUpdatingMealCount(false);
     }
   };
 
@@ -2138,7 +2151,7 @@ export function UserDashboard() {
                             <h3 className="text-lg font-semibold">Editar Dieta com IA</h3>
                           </div>
                           <p className="text-sm text-gray-600">
-                            Faça perguntas ou solicite mudanças na sua dieta. Exemplo: "café da manhã eu costumo comer banana, aveia e tomar 250ml de leite com café, como ficaria minha dieta colocando isso no café da manhã?"
+                            Selecione a refeição que deseja modificar e descreva suas preferências. A IA calculará as porções adequadas para suas metas nutricionais.
                           </p>
 
                           {/* Histórico do Chat */}
@@ -2167,32 +2180,145 @@ export function UserDashboard() {
                             </div>
                           )}
 
-                          {/* Campo de Entrada do Chat */}
-                          <div className="flex gap-2">
-                            <Textarea
-                              placeholder="Ex: cafe da manha eu costumo comer banana, aveia e tomar 250ml de leite com cafe, como ficaria minha dieta colocando isso no cafe da manha?"
-                              value={dietChatMessage}
-                              onChange={(e) => setDietChatMessage(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  processDietChat();
-                                }
-                              }}
-                              className="flex-1 min-h-20"
-                              disabled={isProcessingDietChat}
-                            />
+                          {/* Nova Interface de Edição com Dropdown */}
+                          <div className="space-y-3">
+                            {/* Dropdown de Seleção de Refeição */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Selecione a refeição que deseja editar:</label>
+                              <Select value={selectedMealToEdit} onValueChange={setSelectedMealToEdit}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Escolha uma refeição..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {currentDietPlan?.meals?.map((meal: any) => (
+                                    <SelectItem key={meal.meal} value={meal.meal}>
+                                      {meal.meal}
+                                    </SelectItem>
+                                  )) || [
+                                    <SelectItem key="cafe" value="Café da Manhã">Café da Manhã</SelectItem>,
+                                    <SelectItem key="lanche1" value="Lanche da Manhã">Lanche da Manhã</SelectItem>,
+                                    <SelectItem key="almoco" value="Almoço">Almoço</SelectItem>,
+                                    <SelectItem key="lanche2" value="Lanche da Tarde">Lanche da Tarde</SelectItem>,
+                                    <SelectItem key="jantar" value="Jantar">Jantar</SelectItem>,
+                                    <SelectItem key="ceia" value="Ceia">Ceia</SelectItem>
+                                  ]}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Campo para Descrever Mudanças */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Descreva o que você quer adicionar, trocar ou modificar:</label>
+                              <Textarea
+                                placeholder="Ex: quero trocar por whey e hipercalórico, ou adicionar uma banana, ou substituir por aveia e leite"
+                                value={dietChatMessage}
+                                onChange={(e) => setDietChatMessage(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    processDietChat();
+                                  }
+                                }}
+                                className="min-h-20 resize-none"
+                                disabled={isProcessingDietChat}
+                              />
+                            </div>
+
+                            {/* Botão de Ação */}
                             <Button 
                               onClick={processDietChat}
-                              disabled={!dietChatMessage.trim() || isProcessingDietChat}
-                              className="px-6"
+                              disabled={!dietChatMessage.trim() || !selectedMealToEdit || isProcessingDietChat}
+                              className="w-full"
                             >
                               {isProcessingDietChat ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                  Processando...
+                                </>
                               ) : (
-                                'Enviar'
+                                <>
+                                  <Target className="w-4 h-4 mr-2" />
+                                  Atualizar Dieta
+                                </>
                               )}
                             </Button>
+                          </div>
+
+                          {/* Seção de Personalização do Número de Refeições */}
+                          <Separator className="my-6" />
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-5 h-5 text-orange-600" />
+                              <h4 className="text-lg font-semibold">Personalizar Número de Refeições</h4>
+                            </div>
+                            
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                              <div className="flex items-start gap-2">
+                                <Clock className="w-5 h-5 text-orange-600 mt-0.5" />
+                                <div>
+                                  <p className="text-sm text-orange-800 font-medium mb-1">
+                                    Não tem tempo ou não consegue fazer 6 refeições?
+                                  </p>
+                                  <p className="text-sm text-orange-700">
+                                    Insira quantas refeições você consegue fazer e iremos refazer sua dieta. 
+                                    <span className="font-medium">Lembre-se: quanto menos refeições, maiores elas ficam.</span>
+                                  </p>
+                                  <p className="text-xs text-orange-600 mt-2">
+                                    (Você pode não ter tempo de fazer todas as refeições por conta de trabalho ou compromissos, então essa opção é pra te ajudar)
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <label className="text-sm font-medium text-gray-700 min-w-fit">
+                                Número de refeições por dia:
+                              </label>
+                              <Select 
+                                value={selectedMealCount.toString()} 
+                                onValueChange={(value) => setSelectedMealCount(parseInt(value))}
+                              >
+                                <SelectTrigger className="w-24">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1</SelectItem>
+                                  <SelectItem value="2">2</SelectItem>
+                                  <SelectItem value="3">3</SelectItem>
+                                  <SelectItem value="4">4</SelectItem>
+                                  <SelectItem value="5">5</SelectItem>
+                                  <SelectItem value="6">6</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
+                              <Button 
+                                onClick={() => updateMealCount(selectedMealCount)}
+                                disabled={isUpdatingMealCount}
+                                variant="outline"
+                                className="ml-auto"
+                              >
+                                {isUpdatingMealCount ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    Atualizando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Atualizar Dieta
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {/* Dica visual sobre as porções */}
+                            {selectedMealCount < 4 && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="text-sm text-blue-700">
+                                  ℹ️ <span className="font-medium">{selectedMealCount} refeições:</span> Cada refeição terá porções maiores para atingir suas metas nutricionais diárias.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </CardContent>
