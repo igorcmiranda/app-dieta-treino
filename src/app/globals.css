@@ -160,6 +160,45 @@
   .ios-scroll {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    scroll-behavior: smooth;
+  }
+  
+  /* Enhanced iOS scroll containers */
+  .ios-scroll-container {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    will-change: scroll-position;
+  }
+  
+  /* Main app scroll container */
+  .ios-main-scroll {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    position: relative;
+  }
+  
+  /* Content area that needs to scroll */
+  .ios-content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    min-height: 0; /* Important for flex scrolling */
+  }
+  
+  /* Prevent scroll chaining on iOS */
+  .ios-no-bounce {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Disable tap highlight for iOS */

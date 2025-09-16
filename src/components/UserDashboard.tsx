@@ -1072,8 +1072,8 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="screen-height bg-gradient-to-br from-blue-50 to-indigo-100 safe-area">
-      <div className="max-w-7xl mx-auto px-3 md:px-4">
+    <div className="ios-main-scroll bg-gradient-to-br from-blue-50 to-indigo-100 safe-area">
+      <div className="max-w-7xl mx-auto px-3 md:px-4 ios-content-scroll">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">

@@ -132,8 +132,8 @@ export function UserLogin() {
   }
 
   return (
-    <div className="screen-height bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center safe-area">
-      <div className="w-full max-w-md px-3 md:px-0">
+    <div className="ios-main-scroll bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center safe-area">
+      <div className="w-full max-w-md px-3 md:px-0 ios-content-scroll">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center gap-2 mb-4 touch-target">
