@@ -37,6 +37,8 @@ export interface UserSubscription {
   downgradableDate?: Date; // Data quando pode fazer downgrade
   dietsUsedThisMonth: number;
   workoutsUsedThisMonth: number;
+  bodyAnalysesUsedThisMonth: number; // Nova: tracking de análises corporais
+  monthlyResetDate: Date; // Nova: data do próximo reset mensal
 }
 
 export interface SubscriptionPlan {

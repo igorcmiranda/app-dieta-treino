@@ -16,7 +16,7 @@ import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyse
 import { UserProfile, FoodEntry, WorkoutProgress, MealEntry } from '@/lib/types';
 import { generateDietPlan, generateWorkoutPlan } from '@/lib/fitness-utils';
 import { analyzeBodyPhotos } from '@/lib/body-analysis';
-import { canAccessAI, hasActiveSubscription } from '@/lib/subscription-utils';
+import { canAccessAI, hasActiveSubscription, canUseDiet, canUseBodyAnalysis, canUseWorkout, getSubscriptionLimits, getUsageStatus, shouldResetMonthlyUsage, resetMonthlyUsage, incrementDietUsage, incrementWorkoutUsage, incrementBodyAnalysisUsage } from '@/lib/subscription-utils';
 import { SubscriptionRequired } from './SubscriptionRequired';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
@@ -771,9 +771,27 @@ export function UserDashboard() {
       return;
     }
 
+    // Verificar se precisa resetar contadores mensais
+    let userToCheck = currentUser;
+    if (shouldResetMonthlyUsage(currentUser)) {
+      userToCheck = resetMonthlyUsage(currentUser);
+      updateCurrentUser(userToCheck);
+      updateUser(currentUser.id, userToCheck);
+    }
+
     // Verificar se usuário tem assinatura ativa
-    if (!hasActiveSubscription(currentUser)) {
+    if (!hasActiveSubscription(userToCheck)) {
       setSubscriptionFeature('Análise corporal com IA');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    // Verificar se pode usar análise corporal
+    if (!canUseBodyAnalysis(userToCheck)) {
+      const limits = getSubscriptionLimits(userToCheck);
+      const usage = getUsageStatus(userToCheck);
+      alert(`📊 Limite atingido! Seu plano ${userToCheck.subscription?.plan.toUpperCase()} permite ${limits.bodyAnalysesPerMonth} análise${limits.bodyAnalysesPerMonth > 1 ? 's' : ''} corporal${limits.bodyAnalysesPerMonth > 1 ? 'is' : ''} por mês. Você já usou ${usage.bodyAnalysesUsed}/${limits.bodyAnalysesPerMonth}. Seu plano só fornece ${limits.bodyAnalysesPerMonth} atualização${limits.bodyAnalysesPerMonth > 1 ? 'ões' : ''} por mês. Para uma nova atualização, espere o pagamento da próxima mensalidade.`);
+      setSubscriptionFeature('Nova análise corporal - limite mensal atingido');
       setShowSubscriptionPlans(true);
       return;
     }
@@ -789,6 +807,12 @@ export function UserDashboard() {
         analysis: analysisResult
       };
       addBodyAnalysis(bodyAnalysis);
+      
+      // Incrementar uso de análises corporais
+      const updatedUser = incrementBodyAnalysisUsage(userToCheck);
+      updateCurrentUser(updatedUser);
+      updateUser(currentUser.id, updatedUser);
+      
       console.log('Análise corporal concluída:', analysisResult);
       alert('✅ Análise corporal concluída! Veja os resultados na aba "Resultados".');
       setActiveTab('results');
@@ -994,9 +1018,47 @@ export function UserDashboard() {
       return;
     }
 
+    // Verificar se precisa resetar contadores mensais
+    let userToCheck = currentUser;
+    if (shouldResetMonthlyUsage(currentUser)) {
+      userToCheck = resetMonthlyUsage(currentUser);
+      updateCurrentUser(userToCheck);
+      updateUser(currentUser.id, userToCheck);
+    }
+
     // Verificar se usuário tem assinatura ativa
-    if (!hasActiveSubscription(currentUser)) {
+    if (!hasActiveSubscription(userToCheck)) {
       setSubscriptionFeature('Gerar planos de dieta e treino com IA');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    // Verificar limites específicos
+    const limits = getSubscriptionLimits(userToCheck);
+    const usage = getUsageStatus(userToCheck);
+    const canGenerateDiet = canUseDiet(userToCheck);
+    const canGenerateWorkout = canUseWorkout(userToCheck);
+    const hasPhotos = photos.front || photos.back || photos.left || photos.right;
+    const canAnalyze = hasPhotos ? canUseBodyAnalysis(userToCheck) : true;
+
+    // Verificar se pode executar as ações solicitadas
+    if (!canGenerateDiet) {
+      alert(`📝 Limite de dietas atingido! Seu plano ${userToCheck.subscription?.plan.toUpperCase()} permite ${limits.dietsPerMonth} dieta${limits.dietsPerMonth > 1 ? 's' : ''} por mês. Você já usou ${usage.dietsUsed}/${limits.dietsPerMonth}. Seu plano só fornece ${limits.dietsPerMonth} atualização${limits.dietsPerMonth > 1 ? 'ões' : ''} por mês. Para uma nova atualização, espere o pagamento da próxima mensalidade.`);
+      setSubscriptionFeature('Gerar nova dieta - limite mensal atingido');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    if (!canGenerateWorkout) {
+      alert(`🏋️‍♂️ Limite de treinos atingido! Seu plano ${userToCheck.subscription?.plan.toUpperCase()} permite ${limits.workoutsPerMonth} treino${limits.workoutsPerMonth > 1 ? 's' : ''} por mês. Você já usou ${usage.workoutsUsed}/${limits.workoutsPerMonth}. Seu plano só fornece ${limits.workoutsPerMonth} atualização${limits.workoutsPerMonth > 1 ? 'ões' : ''} por mês. Para uma nova atualização, espere o pagamento da próxima mensalidade.`);
+      setSubscriptionFeature('Gerar novo treino - limite mensal atingido');
+      setShowSubscriptionPlans(true);
+      return;
+    }
+
+    if (hasPhotos && !canAnalyze) {
+      alert(`📊 Limite de análises atingido! Seu plano ${userToCheck.subscription?.plan.toUpperCase()} permite ${limits.bodyAnalysesPerMonth} análise${limits.bodyAnalysesPerMonth > 1 ? 's' : ''} corporal${limits.bodyAnalysesPerMonth > 1 ? 'is' : ''} por mês. Você já usou ${usage.bodyAnalysesUsed}/${limits.bodyAnalysesPerMonth}. Seu plano só fornece ${limits.bodyAnalysesPerMonth} atualização${limits.bodyAnalysesPerMonth > 1 ? 'ões' : ''} por mês. Para uma nova atualização, espere o pagamento da próxima mensalidade.`);
+      setSubscriptionFeature('Nova análise corporal - limite mensal atingido');
       setShowSubscriptionPlans(true);
       return;
     }
@@ -1004,6 +1066,8 @@ export function UserDashboard() {
     setIsGenerating(true);
     
     try {
+      let updatedUser = userToCheck;
+      
       // Gerar plano de dieta
       const allFoods = currentMeals.flatMap(meal => meal.foods);
       const dietPlan = await generateDietPlan(currentUser.profile, allFoods);
@@ -1011,6 +1075,9 @@ export function UserDashboard() {
         ...dietPlan,
         userId: currentUser.id
       });
+      
+      // Incrementar uso de dietas
+      updatedUser = incrementDietUsage(updatedUser);
 
       // Gerar plano de treino
       const workoutPlan = await generateWorkoutPlan(currentUser.profile, currentUser.profile.preferredMuscleGroups);
@@ -1018,9 +1085,12 @@ export function UserDashboard() {
         ...workoutPlan,
         userId: currentUser.id
       });
+      
+      // Incrementar uso de treinos
+      updatedUser = incrementWorkoutUsage(updatedUser);
 
       // Análise corporal com fotos
-      if (photos.front || photos.back || photos.left || photos.right) {
+      if (hasPhotos) {
         try {
           console.log('Iniciando análise corporal...');
           const analysisResult = await analyzeBodyPhotos(photos);
@@ -1030,11 +1100,19 @@ export function UserDashboard() {
             analysis: analysisResult
           };
           addBodyAnalysis(bodyAnalysis);
+          
+          // Incrementar uso de análises corporais
+          updatedUser = incrementBodyAnalysisUsage(updatedUser);
+          
           console.log('Análise corporal concluída:', analysisResult);
         } catch (error) {
           console.error('Erro na análise corporal:', error);
         }
       }
+      
+      // Atualizar usuário com novos contadores
+      updateCurrentUser(updatedUser);
+      updateUser(currentUser.id, updatedUser);
 
       setActiveTab('results');
       alert('✅ Planos gerados com sucesso!');
@@ -1072,10 +1150,10 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="ios-main-scroll bg-gradient-to-br from-blue-50 to-indigo-100 safe-area pt-safe-top pb-safe-bottom">
-      <div className="max-w-7xl mx-auto px-4 ios-content-scroll">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden" style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)' }}>
+      <div className="max-w-7xl mx-auto px-4 overflow-x-hidden">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center touch-target">
               {currentUser.profile?.profilePhoto ? (
@@ -1112,10 +1190,137 @@ export function UserDashboard() {
           </Button>
         </div>
 
+        {/* Subscription Status Card */}
+        {hasActiveSubscription(currentUser) && (() => {
+          // Verificar se precisa resetar antes de mostrar status
+          let userToShow = currentUser;
+          if (shouldResetMonthlyUsage(currentUser)) {
+            userToShow = resetMonthlyUsage(currentUser);
+            // Atualizar silenciosamente em background
+            setTimeout(() => {
+              updateCurrentUser(userToShow);
+              updateUser(currentUser.id, userToShow);
+            }, 100);
+          }
+          const limits = getSubscriptionLimits(userToShow);
+          const usage = getUsageStatus(userToShow);
+          return (
+            <Card className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Badge 
+                      variant={userToShow.subscription?.plan === 'premium' ? 'default' : 'secondary'}
+                      className={`px-3 py-1 font-semibold ${
+                        userToShow.subscription?.plan === 'premium' 
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' 
+                          : userToShow.subscription?.plan === 'standard'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {userToShow.subscription?.plan?.toUpperCase()}
+                    </Badge>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Seu Plano Atual</p>
+                      <p className="text-xs text-gray-600">
+                        {userToShow.subscription?.plan === 'premium' && 'Acesso completo + IA'}
+                        {userToShow.subscription?.plan === 'standard' && 'Recursos avançados'}
+                        {userToShow.subscription?.plan === 'starter' && 'Recursos básicos'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 sm:gap-6">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Utensils className="w-4 h-4 text-orange-600" />
+                        <span className="text-xs font-medium text-gray-700">Dietas</span>
+                      </div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {usage.dietsUsed}/{limits.dietsPerMonth === Infinity ? '∞' : limits.dietsPerMonth}
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                        <div 
+                          className="bg-orange-600 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: limits.dietsPerMonth === Infinity 
+                              ? '0%' 
+                              : `${Math.min(100, (usage.dietsUsed / limits.dietsPerMonth) * 100)}%` 
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Dumbbell className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-medium text-gray-700">Treinos</span>
+                      </div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {usage.workoutsUsed}/{limits.workoutsPerMonth}
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, (usage.workoutsUsed / limits.workoutsPerMonth) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Camera className="w-4 h-4 text-purple-600" />
+                        <span className="text-xs font-medium text-gray-700">Análises</span>
+                      </div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {usage.bodyAnalysesUsed}/{limits.bodyAnalysesPerMonth}
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                        <div 
+                          className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, (usage.bodyAnalysesUsed / limits.bodyAnalysesPerMonth) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {(usage.dietsUsed >= limits.dietsPerMonth || 
+                  usage.workoutsUsed >= limits.workoutsPerMonth || 
+                  usage.bodyAnalysesUsed >= limits.bodyAnalysesPerMonth) && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">
+                          Alguns limites foram atingidos
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Seu plano só fornece um número limitado de atualizações por mês. 
+                          Para novas atualizações, espere o pagamento da próxima mensalidade ou faça upgrade.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowSubscriptionPlans(true)}
+                          className="mt-2 text-xs border-amber-300 text-amber-800 hover:bg-amber-100"
+                        >
+                          Fazer Upgrade
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="w-full">
-            <TabsList className="grid grid-cols-4 sm:grid-cols-5 gap-1 p-1 w-full">
+            <TabsList className="grid grid-cols-4 sm:grid-cols-5 gap-1 p-1 w-full overflow-x-hidden max-w-full">
             <TabsTrigger value="profile" className="flex items-center justify-center touch-target px-3 py-3">
               <User className="w-5 h-5" />
             </TabsTrigger>

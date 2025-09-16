@@ -5,63 +5,102 @@ import { User, UserProfile, FoodEntry, DietPlan, WorkoutPlan, BodyAnalysis, Work
 
 // Dados demo para inicialização
 const initializeDemoUsers = (): User[] => {
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  
   return [
     {
       id: 'admin-1',
-      name: 'Administrador',
+      name: 'Pedro Silva',
       email: 'admin@fitai.com',
       password: 'admin123',
       isAdmin: true,
       emailVerified: true,
-      createdAt: new Date()
-    },
-    {
-      id: 'user-1',
-      name: 'João Silva',
-      email: 'user@fitai.com',
-      password: 'user123',
-      isAdmin: false,
-      emailVerified: true,
       profile: {
-        age: 32,
+        age: 35,
         gender: 'masculino',
         height: 180,
-        weight: 75,
+        weight: 80,
         activityLevel: 'moderado',
         goal: 'manter-peso-perder-gordura',
         preferredMuscleGroups: ['peito', 'braços', 'abdômen', 'pernas'],
-        foodRestrictions: ['lactose', 'glúten'],
+        foodRestrictions: [],
         foodPreferences: ['frango', 'arroz integral', 'brócolis', 'banana']
       },
       subscription: {
         plan: 'premium',
         status: 'active',
         startDate: new Date('2025-09-01'),
-        endDate: new Date('2025-12-01'),
+        endDate: new Date('2026-09-01'),
         canDowngrade: true,
         downgradableDate: new Date('2025-10-01'),
         dietsUsedThisMonth: 0,
-        workoutsUsedThisMonth: 0
+        workoutsUsedThisMonth: 0,
+        bodyAnalysesUsedThisMonth: 0,
+        monthlyResetDate: nextMonth
       },
       createdAt: new Date()
     },
     {
-      id: 'user-2',
-      name: 'Maria Santos',
-      email: 'maria@fitai.com',
-      password: 'maria123',
+      id: 'starter-1',
+      name: 'Usuário Starter',
+      email: 'starter@test.com',
+      password: 'teste123',
       isAdmin: false,
       emailVerified: true,
       profile: {
-        age: 28,
+        age: 25,
+        gender: 'masculino',
+        height: 175,
+        weight: 70,
+        activityLevel: 'leve',
+        goal: 'manter-peso-perder-gordura',
+        preferredMuscleGroups: ['peito', 'braços'],
+        foodRestrictions: [],
+        foodPreferences: ['frango', 'arroz', 'salada']
+      },
+      subscription: {
+        plan: 'starter',
+        status: 'active',
+        startDate: new Date('2025-09-01'),
+        endDate: new Date('2025-10-01'),
+        canDowngrade: false,
+        dietsUsedThisMonth: 0,
+        workoutsUsedThisMonth: 0,
+        bodyAnalysesUsedThisMonth: 0,
+        monthlyResetDate: nextMonth
+      },
+      createdAt: new Date()
+    },
+    {
+      id: 'standard-1',
+      name: 'Usuário Standard',
+      email: 'standard@test.com',
+      password: 'teste123',
+      isAdmin: false,
+      emailVerified: true,
+      profile: {
+        age: 30,
         gender: 'feminino',
         height: 165,
-        weight: 60,
+        weight: 65,
         activityLevel: 'moderado',
-        goal: 'manter-peso-perder-gordura',
-        preferredMuscleGroups: ['pernas', 'glúteos'],
-        foodRestrictions: ['carne vermelha'],
-        foodPreferences: ['salmão', 'quinoa', 'abacate', 'iogurte']
+        goal: 'emagrecer',
+        preferredMuscleGroups: ['pernas', 'glúteos', 'abdômen'],
+        foodRestrictions: ['lactose'],
+        foodPreferences: ['peixe', 'quinoa', 'abacate', 'verduras']
+      },
+      subscription: {
+        plan: 'standard',
+        status: 'active',
+        startDate: new Date('2025-09-01'),
+        endDate: new Date('2025-12-01'),
+        canDowngrade: true,
+        downgradableDate: new Date('2025-10-01'),
+        dietsUsedThisMonth: 0,
+        workoutsUsedThisMonth: 0,
+        bodyAnalysesUsedThisMonth: 0,
+        monthlyResetDate: nextMonth
       },
       createdAt: new Date()
     }
