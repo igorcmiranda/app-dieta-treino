@@ -6,14 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, Crown, Star, Zap, ArrowRight } from 'lucide-react';
 import { SubscriptionPlan } from '@/lib/types';
-import { IuguCheckout } from './IuguCheckout';
-import { useCurrentUser, useUsers } from '@/lib/hooks';
-import { toast } from '@/hooks/use-toast';
 
 interface SubscriptionPlansProps {
   onSelectPlan: (planId: 'starter' | 'standard' | 'premium') => void;
   onClose: () => void;
-  isNewUserFlow?: boolean;
 }
 
 const plans: SubscriptionPlan[] = [
@@ -75,18 +71,8 @@ const plans: SubscriptionPlan[] = [
   }
 ];
 
-export function SubscriptionPlans({ onSelectPlan, onClose, isNewUserFlow = false }: SubscriptionPlansProps) {
+export function SubscriptionPlans({ onSelectPlan, onClose }: SubscriptionPlansProps) {
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutPlan, setCheckoutPlan] = useState<{
-    id: 'starter' | 'standard' | 'premium';
-    identifier: string;
-    name: string;
-    price: number;
-  } | null>(null);
-
-  const { currentUser } = useCurrentUser();
-  const { updateUser } = useUsers();
 
   const getPlanIcon = (planId: string) => {
     switch (planId) {
@@ -114,145 +100,12 @@ export function SubscriptionPlans({ onSelectPlan, onClose, isNewUserFlow = false
     }
   };
 
-  // Mapear planos para identificadores da Iugu
-  const getIuguPlanData = (planId: 'starter' | 'standard' | 'premium') => {
-    const iuguMapping: {
-      [K in 'starter' | 'standard' | 'premium']: {
-        id: K;
-        identifier: string;
-        name: string;
-        price: number;
-      };
-    } = {
-      starter: {
-        id: 'starter' as const,
-        identifier: 'fitai_starter_monthly',
-        name: 'FitAI Starter',
-        price: 1997 // R$ 19,97 em centavos
-      },
-      standard: {
-        id: 'standard' as const,
-        identifier: 'fitai_standard_monthly',
-        name: 'FitAI Standard',
-        price: 2997 // R$ 29,97 em centavos
-      },
-      premium: {
-        id: 'premium' as const,
-        identifier: 'fitai_premium_monthly',
-        name: 'FitAI Premium',
-        price: 4997 // R$ 49,97 em centavos
-      }
-    };
-    return iuguMapping[planId];
-  };
-
   const handleSelectPlan = (planId: 'starter' | 'standard' | 'premium') => {
     setSelectedPlan(planId);
-    
-    // Preparar dados do checkout
-    const iuguPlan = getIuguPlanData(planId);
-    setCheckoutPlan(iuguPlan);
-    
     setTimeout(() => {
-      setShowCheckout(true);
+      onSelectPlan(planId);
     }, 300);
   };
-
-  const handleCheckoutSuccess = (subscriptionData: any) => {
-    console.log('[SUBSCRIPTION] Pagamento realizado com sucesso:', subscriptionData);
-    
-    // Verificar se currentUser existe antes de usar
-    if (currentUser && currentUser.id) {
-      // Atualizar usuário com dados da assinatura
-      const updatedUser = {
-        ...currentUser,
-        subscription: {
-          plan: checkoutPlan?.id as 'starter' | 'standard' | 'premium',
-          status: 'active' as const,
-          startDate: new Date(),
-          endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
-          canDowngrade: checkoutPlan?.id !== 'premium',
-          downgradableDate: checkoutPlan?.id !== 'starter' ? new Date(new Date().setMonth(new Date().getMonth() + 4)) : undefined,
-          dietsUsedThisMonth: 0,
-          workoutsUsedThisMonth: 0,
-          bodyAnalysesUsedThisMonth: 0,
-          monthlyResetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
-          // Dados da integração Iugu
-          iugu: {
-            customerId: subscriptionData.customer_id,
-            subscriptionId: subscriptionData.id,
-            paymentMethodId: subscriptionData.payment_method?.id,
-            lastInvoiceStatus: 'active',
-            nextChargeDate: new Date(new Date().setMonth(new Date().getMonth() + 1))
-          }
-        }
-      };
-
-      updateUser(currentUser.id, updatedUser);
-      
-      toast({
-        title: "🎉 Assinatura ativada!",
-        description: `Bem-vindo ao plano ${checkoutPlan?.name}! Agora você tem acesso completo ao FitAI.`,
-      });
-
-      // Chamar callback original
-      onSelectPlan(checkoutPlan?.id as 'starter' | 'standard' | 'premium');
-    } else {
-      // Para novos usuários ou quando currentUser é null, apenas chamar callback
-      console.log('[SUBSCRIPTION] New user flow - skipping user update');
-      
-      toast({
-        title: "🎉 Assinatura ativada!",
-        description: `Bem-vindo ao plano ${checkoutPlan?.name}! Agora você tem acesso completo ao FitAI.`,
-      });
-      
-      // Chamar callback original mesmo sem currentUser
-      onSelectPlan(checkoutPlan?.id as 'starter' | 'standard' | 'premium');
-    }
-  };
-
-  const handleCheckoutError = (error: string) => {
-    console.error('[SUBSCRIPTION] Erro no checkout:', error);
-    
-    toast({
-      variant: "destructive",
-      title: "❌ Erro no pagamento",
-      description: error || "Ocorreu um erro ao processar seu pagamento. Tente novamente.",
-    });
-    
-    // Voltar para seleção de planos
-    setShowCheckout(false);
-    setSelectedPlan(null);
-    setCheckoutPlan(null);
-  };
-
-  const handleBackFromCheckout = () => {
-    setShowCheckout(false);
-    setSelectedPlan(null);
-    setCheckoutPlan(null);
-  };
-
-  // Se estivermos no checkout, mostrar o componente de checkout
-  // Durante fluxo de novo usuário, currentUser pode ser null inicialmente, mas deve permitir checkout
-  if (showCheckout && checkoutPlan && (currentUser || isNewUserFlow)) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-950 p-4 flex items-center justify-center">
-        <IuguCheckout
-          planIdentifier={checkoutPlan.identifier as 'fitai_starter_monthly' | 'fitai_standard_monthly' | 'fitai_premium_monthly'}
-          planName={checkoutPlan.name}
-          planPrice={checkoutPlan.price}
-          onSuccess={handleCheckoutSuccess}
-          onError={handleCheckoutError}
-          onBack={handleBackFromCheckout}
-          userId={currentUser?.id || `temp-user-${Date.now()}`}
-          userEmail={currentUser?.email || 'temp@example.com'}
-          userName={currentUser?.name || 'Usuário Temporário'}
-          userCPF={currentUser?.cpf}
-          userPhone={currentUser?.phone}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 p-4">
@@ -361,18 +214,16 @@ export function SubscriptionPlans({ onSelectPlan, onClose, isNewUserFlow = false
           </ul>
         </div>
 
-        {/* Back Button - só mostrar se NÃO for fluxo de novo usuário */}
-        {!isNewUserFlow && (
-          <div className="text-center">
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              className="text-blue-600 hover:text-blue-700"
-            >
-              Voltar para o app
-            </Button>
-          </div>
-        )}
+        {/* Back Button */}
+        <div className="text-center">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Voltar para o app
+          </Button>
+        </div>
       </div>
     </div>
   );

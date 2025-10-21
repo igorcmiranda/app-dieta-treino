@@ -5,15 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCurrentUser, useUsers, useActivityLogger } from '@/lib/hooks';
-import { LogIn, Dumbbell, Heart, Target, UserPlus, KeyRound } from 'lucide-react';
+import { useCurrentUser, useUsers } from '@/lib/hooks';
+import { LogIn, Dumbbell, Heart, Target, UserPlus } from 'lucide-react';
 import { UserRegister } from './UserRegister';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
-import { ForgotPassword } from './ForgotPassword';
-import { ResetPassword } from './ResetPassword';
 
-type AuthScreen = 'login' | 'register' | 'plans' | 'payment' | 'forgot-password' | 'reset-password';
+type AuthScreen = 'login' | 'register' | 'plans' | 'payment';
 
 export function UserLogin() {
   const [email, setEmail] = useState('');
@@ -21,35 +19,13 @@ export function UserLogin() {
   const [error, setError] = useState('');
   const [currentScreen, setCurrentScreen] = useState<AuthScreen>('login');
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
-  const [resetToken, setResetToken] = useState<string>('');
-  const [resetEmail, setResetEmail] = useState<string>('');
   const { login } = useCurrentUser();
   const { authenticateUser, users } = useUsers();
-  const { logActivity } = useActivityLogger();
 
   // Debug: mostrar usuários carregados
   useEffect(() => {
     console.log('Usuários carregados no UserLogin:', users);
   }, [users]);
-
-  // Verificar parâmetros da URL para reset de senha
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('resetToken');
-      const emailParam = urlParams.get('email');
-      
-      if (token && emailParam) {
-        setResetToken(token);
-        setResetEmail(decodeURIComponent(emailParam));
-        setCurrentScreen('reset-password');
-        
-        // Limpar parâmetros da URL sem recarregar a página
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-      }
-    }
-  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,41 +38,8 @@ export function UserLogin() {
     console.log('Resultado da autenticação:', user);
     
     if (user) {
-      // Log de login bem-sucedido
-      logActivity({
-        userId: user.id,
-        userName: user.name,
-        userEmail: user.email,
-        action: 'LOGIN',
-        details: `Login realizado com sucesso via formulário`,
-        status: 'success',
-        metadata: {
-          loginMethod: 'form',
-          timestamp: new Date()
-        }
-      });
-
       login(user);
-      // Forçar redirecionamento imediato após login
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
     } else {
-      // Log de tentativa de login falhada
-      logActivity({
-        userId: 'unknown',
-        userName: 'Usuário Desconhecido',
-        userEmail: email || 'unknown',
-        action: 'LOGIN_FAILED',
-        details: `Tentativa de login falhada para email: ${email}`,
-        status: 'error',
-        metadata: {
-          loginMethod: 'form',
-          attemptedEmail: email,
-          timestamp: new Date()
-        }
-      });
-
       setError('Email ou senha incorretos');
     }
   };
@@ -108,42 +51,8 @@ export function UserLogin() {
     // Fazer login automaticamente
     const user = authenticateUser(demoEmail, demoPassword);
     if (user) {
-      // Log de login bem-sucedido via demo
-      logActivity({
-        userId: user.id,
-        userName: user.name,
-        userEmail: user.email,
-        action: 'LOGIN',
-        details: `Login realizado com sucesso via conta demo (${user.subscription?.plan})`,
-        status: 'success',
-        metadata: {
-          loginMethod: 'demo',
-          demoAccount: user.subscription?.plan,
-          timestamp: new Date()
-        }
-      });
-
       login(user);
-      // Forçar redirecionamento imediato após login
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
     } else {
-      // Log de erro no login demo
-      logActivity({
-        userId: 'unknown',
-        userName: 'Demo User',
-        userEmail: demoEmail,
-        action: 'LOGIN_FAILED',
-        details: `Erro ao fazer login com credenciais demo: ${demoEmail}`,
-        status: 'error',
-        metadata: {
-          loginMethod: 'demo',
-          attemptedEmail: demoEmail,
-          timestamp: new Date()
-        }
-      });
-
       setError('Erro ao fazer login com credenciais demo');
     }
   };
@@ -162,9 +71,6 @@ export function UserLogin() {
     // Após pagamento bem-sucedido, fazer login automático
     // Em um app real, você criaria o usuário no banco de dados
     // Por enquanto, vamos simular um login bem-sucedido
-    const now = new Date();
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    
     const newUser = {
       id: 'new-user-' + Date.now(),
       name: 'Novo Usuário',
@@ -181,24 +87,11 @@ export function UserLogin() {
         canDowngrade: false,
         downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000), // 4 meses
         dietsUsedThisMonth: 0,
-        workoutsUsedThisMonth: 0,
-        bodyAnalysesUsedThisMonth: 0,
-        monthlyResetDate: nextMonth
+        workoutsUsedThisMonth: 0
       }
     };
     
     login(newUser);
-  };
-
-  // Manipular sucesso da recuperação de senha
-  const handlePasswordResetSuccess = () => {
-    setCurrentScreen('login');
-    setEmail(resetEmail); // Pré-preencher o email
-    setError('');
-    // Mostrar mensagem de sucesso temporária
-    setTimeout(() => {
-      alert('Senha redefinida com sucesso! Faça login com sua nova senha.');
-    }, 100);
   };
 
   // Renderizar tela baseada no estado atual
@@ -216,7 +109,6 @@ export function UserLogin() {
       <SubscriptionPlans
         onSelectPlan={handleSelectPlan}
         onClose={() => setCurrentScreen('login')}
-        isNewUserFlow={true}
       />
     );
   }
@@ -231,56 +123,37 @@ export function UserLogin() {
     );
   }
 
-  if (currentScreen === 'forgot-password') {
-    return (
-      <ForgotPassword
-        onBack={() => setCurrentScreen('login')}
-      />
-    );
-  }
-
-  if (currentScreen === 'reset-password' && resetToken && resetEmail) {
-    return (
-      <ResetPassword
-        token={resetToken}
-        email={resetEmail}
-        onBack={() => setCurrentScreen('login')}
-        onSuccess={handlePasswordResetSuccess}
-      />
-    );
-  }
-
   return (
-    <div className="ios-main-scroll bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center safe-area">
-      <div className="w-full max-w-md px-3 md:px-0 ios-content-scroll">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4 touch-target">
-            <div className="p-3 bg-blue-600 rounded-full touch-target">
-              <Dumbbell className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="p-3 bg-blue-600 rounded-full">
+              <Dumbbell className="w-8 h-8 text-white" />
             </div>
-            <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-red-500" />
+            <Heart className="w-6 h-6 text-red-500" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-blue-100 mb-2">
+          <h1 className="text-3xl font-bold text-blue-900 dark:text-blue-100 mb-2">
             FitAI Coach
           </h1>
-          <p className="text-sm sm:text-base text-blue-700 dark:text-blue-300">
+          <p className="text-blue-700 dark:text-blue-300">
             Seu personal trainer com inteligência artificial
           </p>
         </div>
 
         {/* Login Form */}
         <Card className="shadow-xl border-blue-100 dark:border-blue-800">
-          <CardHeader className="text-center p-4 sm:p-6">
-            <CardTitle className="flex items-center justify-center gap-2 text-blue-900 dark:text-blue-100 text-lg sm:text-xl">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2 text-blue-900 dark:text-blue-100">
               <LogIn className="w-5 h-5" />
               Entrar na sua conta
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6">
+          <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-blue-800 dark:text-blue-200 text-sm sm:text-base">
+                <Label htmlFor="email" className="text-blue-800 dark:text-blue-200">
                   Email
                 </Label>
                 <Input
@@ -290,12 +163,12 @@ export function UserLogin() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
-                  className="border-blue-200 dark:border-blue-700 focus:ring-blue-500 touch-target text-base"
+                  className="border-blue-200 dark:border-blue-700 focus:ring-blue-500"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-blue-800 dark:text-blue-200 text-sm sm:text-base">
+                <Label htmlFor="password" className="text-blue-800 dark:text-blue-200">
                   Senha
                 </Label>
                 <Input
@@ -305,49 +178,39 @@ export function UserLogin() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="border-blue-200 dark:border-blue-700 focus:ring-blue-500 touch-target text-base"
+                  className="border-blue-200 dark:border-blue-700 focus:ring-blue-500"
                 />
               </div>
 
               {error && (
-                <div className="text-red-600 text-sm text-center bg-red-50 dark:bg-red-950 p-3 rounded">
+                <div className="text-red-600 text-sm text-center bg-red-50 dark:bg-red-950 p-2 rounded">
                   {error}
                 </div>
               )}
 
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white touch-target text-base"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Entrar
               </Button>
             </form>
 
             {/* Register Button */}
-            <div className="mt-4 space-y-3">
+            <div className="mt-4">
               <Button
                 variant="outline"
                 onClick={() => setCurrentScreen('register')}
-                className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 touch-target text-sm sm:text-base"
+                className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Não tem conta? Cadastre-se agora mesmo
               </Button>
-              
-              {/* Forgot Password Button */}
-              <Button
-                variant="ghost"
-                onClick={() => setCurrentScreen('forgot-password')}
-                className="w-full text-blue-600 hover:bg-blue-50 hover:text-blue-700 touch-target text-sm"
-              >
-                <KeyRound className="w-4 h-4 mr-2" />
-                Esqueci minha senha
-              </Button>
             </div>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-sm sm:text-base">
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">
                 Contas de demonstração:
               </h4>
               <div className="space-y-2">
@@ -355,7 +218,7 @@ export function UserLogin() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full text-left justify-start border-blue-200 hover:bg-blue-100 touch-target text-xs sm:text-sm"
+                  className="w-full text-left justify-start border-blue-200 hover:bg-blue-100"
                   onClick={() => handleDemoLogin('admin@fitai.com', 'admin123')}
                 >
                   <strong>Admin:</strong>&nbsp;admin@fitai.com / admin123
@@ -364,7 +227,7 @@ export function UserLogin() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full text-left justify-start border-blue-200 hover:bg-blue-100 touch-target text-xs sm:text-sm"
+                  className="w-full text-left justify-start border-blue-200 hover:bg-blue-100"
                   onClick={() => handleDemoLogin('user@fitai.com', 'user123')}
                 >
                   <strong>Usuário:</strong>&nbsp;user@fitai.com / user123
@@ -382,22 +245,22 @@ export function UserLogin() {
         </Card>
 
         {/* Features */}
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
-          <div className="p-3 sm:p-4 bg-white dark:bg-blue-900 rounded-lg shadow touch-target">
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+          <div className="p-4 bg-white dark:bg-blue-900 rounded-lg shadow">
             <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
               Dietas Personalizadas
             </p>
           </div>
-          <div className="p-3 sm:p-4 bg-white dark:bg-blue-900 rounded-lg shadow touch-target">
+          <div className="p-4 bg-white dark:bg-blue-900 rounded-lg shadow">
             <Dumbbell className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
               Treinos Inteligentes
             </p>
           </div>
-          <div className="p-3 sm:p-4 bg-white dark:bg-blue-900 rounded-lg shadow touch-target">
+          <div className="p-4 bg-white dark:bg-blue-900 rounded-lg shadow">
             <Heart className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
               Análise Corporal
             </p>
           </div>
