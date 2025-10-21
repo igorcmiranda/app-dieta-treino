@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Remover output: 'export' para desenvolvimento
+  // output: 'export', // Descomentado apenas para build de produção
   trailingSlash: true,
   images: {
     unoptimized: true,
