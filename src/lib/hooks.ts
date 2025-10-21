@@ -254,10 +254,18 @@ export function useCurrentUser() {
   const login = (user: User) => {
     console.log('Fazendo login do usuário:', user);
     setCurrentUser(user);
+    // Forçar atualização imediata da interface
+    setTimeout(() => {
+      window.dispatchEvent(new Event('storage'));
+    }, 100);
   };
 
   const logout = () => {
     setCurrentUser(null);
+    // Forçar atualização imediata da interface
+    setTimeout(() => {
+      window.dispatchEvent(new Event('storage'));
+    }, 100);
   };
 
   const updateCurrentUser = (updates: Partial<User>) => {

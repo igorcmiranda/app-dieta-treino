@@ -497,81 +497,85 @@ export function UserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-x-hidden">
+      {/* Viewport meta tag para mobile nativo */}
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      
+      <div className="w-full max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+        {/* Header - Responsivo */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 Olá, {currentUser.name}!
               </h1>
-              <p className="text-gray-600">Bem-vindo ao seu dashboard</p>
+              <p className="text-sm sm:text-base text-gray-600">Bem-vindo ao seu dashboard</p>
             </div>
           </div>
           <Button 
             onClick={logout}
             variant="outline"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
           >
             <LogOut className="w-4 h-4" />
             Sair
           </Button>
         </div>
 
-        {/* Tabs Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+        {/* Tabs Navigation - Mobile First */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1">
+            <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-2 text-xs sm:text-sm">
               <User className="w-4 h-4" />
-              Perfil
+              <span>Perfil</span>
             </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <TabsTrigger value="dashboard" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-2 text-xs sm:text-sm">
               <Activity className="w-4 h-4" />
-              Dashboard
+              <span>Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="workout" className="flex items-center gap-2">
+            <TabsTrigger value="workout" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-2 text-xs sm:text-sm">
               <Dumbbell className="w-4 h-4" />
-              Treino
+              <span>Treino</span>
             </TabsTrigger>
-            <TabsTrigger value="results" className="flex items-center gap-2">
+            <TabsTrigger value="results" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 px-2 text-xs sm:text-sm">
               <Target className="w-4 h-4" />
-              Resultados
+              <span>Resultados</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Profile Tab */}
+          {/* Profile Tab - Mobile Optimized */}
           <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                   <User className="w-5 h-5" />
                   Informações Pessoais
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleProfileSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={handleProfileSubmit} className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="age">Idade</Label>
+                      <Label htmlFor="age" className="text-sm font-medium">Idade</Label>
                       <Input
                         id="age"
                         type="number"
                         value={profile.age || ''}
                         onChange={(e) => setProfile(prev => ({ ...prev, age: parseInt(e.target.value) || 0 }))}
                         required
+                        className="mt-1"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="gender">Gênero</Label>
+                      <Label htmlFor="gender" className="text-sm font-medium">Gênero</Label>
                       <Select 
                         value={profile.gender} 
                         onValueChange={(value) => setProfile(prev => ({ ...prev, gender: value as 'masculino' | 'feminino' }))}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -581,34 +585,36 @@ export function UserDashboard() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="height">Altura (cm)</Label>
+                      <Label htmlFor="height" className="text-sm font-medium">Altura (cm)</Label>
                       <Input
                         id="height"
                         type="number"
                         value={profile.height || ''}
                         onChange={(e) => setProfile(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
                         required
+                        className="mt-1"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="weight">Peso (kg)</Label>
+                      <Label htmlFor="weight" className="text-sm font-medium">Peso (kg)</Label>
                       <Input
                         id="weight"
                         type="number"
                         value={profile.weight || ''}
                         onChange={(e) => setProfile(prev => ({ ...prev, weight: parseInt(e.target.value) || 0 }))}
                         required
+                        className="mt-1"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="activityLevel">Nível de Atividade</Label>
+                    <Label htmlFor="activityLevel" className="text-sm font-medium">Nível de Atividade</Label>
                     <Select 
                       value={profile.activityLevel} 
                       onValueChange={(value) => setProfile(prev => ({ ...prev, activityLevel: value as any }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -622,12 +628,12 @@ export function UserDashboard() {
                   </div>
 
                   <div>
-                    <Label htmlFor="goal">Objetivo</Label>
+                    <Label htmlFor="goal" className="text-sm font-medium">Objetivo</Label>
                     <Select 
                       value={profile.goal} 
                       onValueChange={(value) => setProfile(prev => ({ ...prev, goal: value as any }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -647,13 +653,13 @@ export function UserDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Dashboard Tab */}
+          {/* Dashboard Tab - Mobile Optimized */}
           <TabsContent value="dashboard">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Alimentação */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Alimentação - Mobile First */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     <Utensils className="w-5 h-5" />
                     Alimentação Atual
                   </CardTitle>
@@ -661,12 +667,12 @@ export function UserDashboard() {
                 <CardContent className="space-y-4">
                   {dietStep === 'question' && (
                     <div className="text-center space-y-4">
-                      <p className="text-gray-600">Você segue alguma dieta específica atualmente?</p>
-                      <div className="flex gap-4 justify-center">
-                        <Button onClick={() => handleDietQuestion(true)} variant="outline">
+                      <p className="text-gray-600 text-sm sm:text-base">Você segue alguma dieta específica atualmente?</p>
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                        <Button onClick={() => handleDietQuestion(true)} variant="outline" className="w-full sm:w-auto">
                           Sim, sigo uma dieta
                         </Button>
-                        <Button onClick={() => handleDietQuestion(false)} variant="outline">
+                        <Button onClick={() => handleDietQuestion(false)} variant="outline" className="w-full sm:w-auto">
                           Não sigo dieta específica
                         </Button>
                       </div>
@@ -685,7 +691,7 @@ export function UserDashboard() {
                             <div className="text-center space-y-2">
                               <Upload className="w-8 h-8 text-gray-400 mx-auto" />
                               <div>
-                                <label htmlFor="diet-file" className="cursor-pointer text-blue-600 hover:text-blue-700">
+                                <label htmlFor="diet-file" className="cursor-pointer text-blue-600 hover:text-blue-700 text-sm">
                                   Clique para enviar arquivo
                                 </label>
                                 <input
@@ -717,87 +723,97 @@ export function UserDashboard() {
                         </p>
                       )}
 
-                      {/* Formulário para adicionar refeições */}
-                      <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
-                        <h4 className="font-medium flex items-center gap-2">
+                      {/* Formulário para adicionar refeições - Mobile Optimized */}
+                      <div className="space-y-4 border rounded-lg p-3 sm:p-4 bg-gray-50">
+                        <h4 className="font-medium flex items-center gap-2 text-sm sm:text-base">
                           <Plus className="w-4 h-4" />
                           Adicionar Refeição
                         </h4>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <Label htmlFor="meal-name">Nome da refeição</Label>
+                            <Label htmlFor="meal-name" className="text-sm">Nome da refeição</Label>
                             <Input
                               id="meal-name"
                               placeholder="Ex: Café da manhã"
                               value={newMeal.name}
                               onChange={(e) => setNewMeal(prev => ({ ...prev, name: e.target.value }))}
+                              className="mt-1"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="meal-time">Horário</Label>
+                            <Label htmlFor="meal-time" className="text-sm">Horário</Label>
                             <Input
                               id="meal-time"
                               type="time"
                               value={newMeal.time}
                               onChange={(e) => setNewMeal(prev => ({ ...prev, time: e.target.value }))}
+                              className="mt-1"
                             />
                           </div>
                         </div>
 
-                        {/* Adicionar alimentos à refeição */}
+                        {/* Adicionar alimentos à refeição - Mobile First */}
                         <div className="space-y-3">
-                          <Label>Alimentos</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <Input
-                              placeholder="Alimento"
-                              value={newFood.food}
-                              onChange={(e) => setNewFood(prev => ({ ...prev, food: e.target.value }))}
-                            />
-                            <Input
-                              placeholder="Quantidade"
-                              value={newFood.quantity}
-                              onChange={(e) => setNewFood(prev => ({ ...prev, quantity: e.target.value }))}
-                            />
-                            <Select 
-                              value={newFood.measurement} 
-                              onValueChange={(value) => setNewFood(prev => ({ ...prev, measurement: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="gramas">gramas</SelectItem>
-                                <SelectItem value="ml">ml</SelectItem>
-                                <SelectItem value="unidade">unidade</SelectItem>
-                                <SelectItem value="colher-sopa">colher de sopa</SelectItem>
-                                <SelectItem value="colher-cha">colher de chá</SelectItem>
-                                <SelectItem value="xicara">xícara</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button onClick={addFoodToMeal} size="sm">
-                              <Plus className="w-4 h-4" />
-                            </Button>
+                          <Label className="text-sm font-medium">Alimentos</Label>
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <Input
+                                placeholder="Alimento"
+                                value={newFood.food}
+                                onChange={(e) => setNewFood(prev => ({ ...prev, food: e.target.value }))}
+                              />
+                              <Input
+                                placeholder="Quantidade"
+                                value={newFood.quantity}
+                                onChange={(e) => setNewFood(prev => ({ ...prev, quantity: e.target.value }))}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Select 
+                                value={newFood.measurement} 
+                                onValueChange={(value) => setNewFood(prev => ({ ...prev, measurement: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="gramas">gramas</SelectItem>
+                                  <SelectItem value="ml">ml</SelectItem>
+                                  <SelectItem value="unidade">unidade</SelectItem>
+                                  <SelectItem value="colher-sopa">colher de sopa</SelectItem>
+                                  <SelectItem value="colher-cha">colher de chá</SelectItem>
+                                  <SelectItem value="xicara">xícara</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button onClick={addFoodToMeal} size="sm" className="w-full">
+                                <Plus className="w-4 h-4 mr-1" />
+                                Adicionar
+                              </Button>
+                            </div>
                           </div>
 
                           {/* Lista de alimentos da refeição atual */}
                           {newMeal.foods.length > 0 && (
                             <div className="space-y-2">
                               <p className="text-sm font-medium">Alimentos nesta refeição:</p>
-                              {newMeal.foods.map((food, index) => (
-                                <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                                  <span className="text-sm">
-                                    {food.food} - {food.quantity} {food.measurement}
-                                  </span>
-                                  <Button
-                                    onClick={() => removeFoodFromMeal(index)}
-                                    size="sm"
-                                    variant="ghost"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              ))}
+                              <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {newMeal.foods.map((food, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-white p-2 rounded border text-sm">
+                                    <span className="flex-1 pr-2">
+                                      {food.food} - {food.quantity} {food.measurement}
+                                    </span>
+                                    <Button
+                                      onClick={() => removeFoodFromMeal(index)}
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -807,36 +823,39 @@ export function UserDashboard() {
                         </Button>
                       </div>
 
-                      {/* Lista de refeições adicionadas */}
+                      {/* Lista de refeições adicionadas - Mobile Optimized */}
                       {currentMeals.length > 0 && (
                         <div className="space-y-3">
-                          <h4 className="font-medium">Refeições Registradas ({currentMeals.length})</h4>
-                          {currentMeals.map((meal, index) => (
-                            <div key={index} className="border rounded-lg p-3 bg-white">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-gray-500" />
-                                  <span className="font-medium">{meal.name}</span>
-                                  <Badge variant="outline">{meal.time}</Badge>
+                          <h4 className="font-medium text-sm sm:text-base">Refeições Registradas ({currentMeals.length})</h4>
+                          <div className="space-y-3 max-h-64 overflow-y-auto">
+                            {currentMeals.map((meal, index) => (
+                              <div key={index} className="border rounded-lg p-3 bg-white">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Clock className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                    <span className="font-medium text-sm truncate">{meal.name}</span>
+                                    <Badge variant="outline" className="text-xs">{meal.time}</Badge>
+                                  </div>
+                                  <Button
+                                    onClick={() => removeMealFromList(index)}
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 flex-shrink-0"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
                                 </div>
-                                <Button
-                                  onClick={() => removeMealFromList(index)}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="text-xs sm:text-sm text-gray-600">
+                                  {meal.foods.map((food, foodIndex) => (
+                                    <span key={foodIndex}>
+                                      {food.food} ({food.quantity} {food.measurement})
+                                      {foodIndex < meal.foods.length - 1 ? ', ' : ''}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-600">
-                                {meal.foods.map((food, foodIndex) => (
-                                  <span key={foodIndex}>
-                                    {food.food} ({food.quantity} {food.measurement})
-                                    {foodIndex < meal.foods.length - 1 ? ', ' : ''}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -864,6 +883,7 @@ export function UserDashboard() {
                         onClick={() => setDietStep('input')} 
                         variant="outline" 
                         size="sm"
+                        className="w-full sm:w-auto"
                       >
                         Editar refeições
                       </Button>
@@ -872,43 +892,44 @@ export function UserDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Fotos */}
+              {/* Fotos - Mobile Optimized */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     <Camera className="w-5 h-5" />
                     Fotos Corporais
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {(['front', 'back', 'left', 'right'] as const).map((position) => (
                       <div key={position} className="space-y-2">
-                        <Label className="capitalize">
+                        <Label className="capitalize text-sm">
                           {position === 'front' ? 'Frente' : 
                            position === 'back' ? 'Costas' : 
                            position === 'left' ? 'Lado Esquerdo' : 'Lado Direito'}
                         </Label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center">
                           {photos[position] ? (
                             <div className="space-y-2">
                               <img 
                                 src={photos[position]} 
                                 alt={position}
-                                className="w-full h-32 object-cover rounded"
+                                className="w-full h-24 sm:h-32 object-cover rounded"
                               />
                               <Button
                                 onClick={() => setPhotos(prev => ({ ...prev, [position]: '' }))}
                                 size="sm"
                                 variant="outline"
+                                className="w-full text-xs"
                               >
                                 Remover
                               </Button>
                             </div>
                           ) : (
                             <div>
-                              <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                              <label htmlFor={`photo-${position}`} className="cursor-pointer text-blue-600 hover:text-blue-700 text-sm">
+                              <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
+                              <label htmlFor={`photo-${position}`} className="cursor-pointer text-blue-600 hover:text-blue-700 text-xs sm:text-sm">
                                 Adicionar foto
                               </label>
                               <input
@@ -931,22 +952,22 @@ export function UserDashboard() {
               </Card>
             </div>
 
-            {/* Botão para gerar planos */}
-            <div className="mt-6">
+            {/* Botão para gerar planos - Mobile Optimized */}
+            <div className="mt-4 sm:mt-6">
               <Card>
-                <CardContent className="pt-6">
+                <CardContent className="pt-4 sm:pt-6">
                   <div className="text-center space-y-4">
                     <div className="flex items-center justify-center gap-2">
-                      <Target className="w-6 h-6 text-blue-600" />
-                      <h3 className="text-lg font-semibold">Gerar Planos Personalizados</h3>
+                      <Target className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                      <h3 className="text-base sm:text-lg font-semibold">Gerar Planos Personalizados</h3>
                     </div>
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 text-sm sm:text-base">
                       Com base no seu perfil, alimentação atual e fotos, nossa IA criará planos personalizados de dieta e treino.
                     </p>
                     <Button 
                       onClick={generatePlans}
                       disabled={isGenerating || !currentUser?.profile || currentMeals.length === 0}
-                      className="w-full max-w-md"
+                      className="w-full"
                     >
                       {isGenerating ? (
                         <>
@@ -961,7 +982,7 @@ export function UserDashboard() {
                       )}
                     </Button>
                     {(!currentUser?.profile || currentMeals.length === 0) && (
-                      <p className="text-sm text-amber-600">
+                      <p className="text-xs sm:text-sm text-amber-600">
                         Complete seu perfil e adicione suas refeições para continuar
                       </p>
                     )}
@@ -971,34 +992,35 @@ export function UserDashboard() {
             </div>
           </TabsContent>
 
-          {/* Workout Tab */}
+          {/* Workout Tab - Mobile Optimized */}
           <TabsContent value="workout">
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {currentWorkoutPlan ? (
                 <>
-                  {/* Seletor de data e treino */}
+                  {/* Seletor de data e treino - Mobile First */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                         <Calendar className="w-5 h-5" />
                         Registrar Treino
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="workout-date">Data do Treino</Label>
+                          <Label htmlFor="workout-date" className="text-sm">Data do Treino</Label>
                           <Input
                             id="workout-date"
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
+                            className="mt-1"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="workout-day">Treino</Label>
+                          <Label htmlFor="workout-day" className="text-sm">Treino</Label>
                           <Select value={selectedWorkoutDay} onValueChange={setSelectedWorkoutDay}>
-                            <SelectTrigger>
+                            <SelectTrigger className="mt-1">
                               <SelectValue placeholder="Selecione o treino" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1023,78 +1045,83 @@ export function UserDashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Progresso do treino */}
+                  {/* Progresso do treino - Mobile Optimized */}
                   {workoutProgressData && (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
+                        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <Dumbbell className="w-5 h-5" />
-                            Treino de {workoutProgressData.workoutDay}
+                            <span className="text-base sm:text-lg">Treino de {workoutProgressData.workoutDay}</span>
                           </div>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="text-xs">
                             {selectedDate}
                           </Badge>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-6">
-                        {workoutProgressData.exercises.map((exercise, exerciseIndex) => (
-                          <div key={exerciseIndex} className="space-y-4 border rounded-lg p-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium">{exercise.exerciseName}</h4>
-                              <Button
-                                onClick={() => getExerciseVideo(exercise.exerciseName)}
-                                size="sm"
-                                variant="outline"
-                              >
-                                <Play className="w-4 h-4 mr-1" />
-                                Vídeo
-                              </Button>
+                      <CardContent className="space-y-4 sm:space-y-6">
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                          {workoutProgressData.exercises.map((exercise, exerciseIndex) => (
+                            <div key={exerciseIndex} className="space-y-3 border rounded-lg p-3 sm:p-4">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                <h4 className="font-medium text-sm sm:text-base">{exercise.exerciseName}</h4>
+                                <Button
+                                  onClick={() => getExerciseVideo(exercise.exerciseName)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                >
+                                  <Play className="w-4 h-4 mr-1" />
+                                  Vídeo
+                                </Button>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                {exercise.sets.map((set, setIndex) => (
+                                  <div key={setIndex} className="grid grid-cols-4 gap-2 items-center">
+                                    <div className="text-xs sm:text-sm font-medium">
+                                      Série {setIndex + 1}
+                                    </div>
+                                    <div>
+                                      <Input
+                                        type="number"
+                                        placeholder="Peso"
+                                        value={set.weight || ''}
+                                        onChange={(e) => updateExerciseProgress(
+                                          exerciseIndex, 
+                                          setIndex, 
+                                          'weight', 
+                                          parseFloat(e.target.value) || 0
+                                        )}
+                                        className="text-xs sm:text-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Input
+                                        type="number"
+                                        placeholder="Reps"
+                                        value={set.reps || ''}
+                                        onChange={(e) => updateExerciseProgress(
+                                          exerciseIndex, 
+                                          setIndex, 
+                                          'reps', 
+                                          parseInt(e.target.value) || 0
+                                        )}
+                                        className="text-xs sm:text-sm"
+                                      />
+                                    </div>
+                                    <div className="flex justify-center">
+                                      <Checkbox
+                                        checked={set.completed}
+                                        onCheckedChange={() => toggleSetCompletion(exerciseIndex, setIndex)}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            
-                            <div className="space-y-2">
-                              {exercise.sets.map((set, setIndex) => (
-                                <div key={setIndex} className="grid grid-cols-4 gap-2 items-center">
-                                  <div className="text-sm font-medium">
-                                    Série {setIndex + 1}
-                                  </div>
-                                  <div>
-                                    <Input
-                                      type="number"
-                                      placeholder="Peso (kg)"
-                                      value={set.weight || ''}
-                                      onChange={(e) => updateExerciseProgress(
-                                        exerciseIndex, 
-                                        setIndex, 
-                                        'weight', 
-                                        parseFloat(e.target.value) || 0
-                                      )}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Input
-                                      type="number"
-                                      placeholder="Reps"
-                                      value={set.reps || ''}
-                                      onChange={(e) => updateExerciseProgress(
-                                        exerciseIndex, 
-                                        setIndex, 
-                                        'reps', 
-                                        parseInt(e.target.value) || 0
-                                      )}
-                                    />
-                                  </div>
-                                  <div className="flex justify-center">
-                                    <Checkbox
-                                      checked={set.completed}
-                                      onCheckedChange={() => toggleSetCompletion(exerciseIndex, setIndex)}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
 
                         <Button onClick={saveCompleteWorkout} className="w-full">
                           <Save className="w-4 h-4 mr-2" />
@@ -1111,11 +1138,11 @@ export function UserDashboard() {
                       <Dumbbell className="w-12 h-12 text-gray-400 mx-auto" />
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Nenhum plano de treino</h3>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 text-sm sm:text-base">
                           Gere seu plano personalizado na aba Dashboard
                         </p>
                       </div>
-                      <Button onClick={() => setActiveTab('dashboard')}>
+                      <Button onClick={() => setActiveTab('dashboard')} className="w-full sm:w-auto">
                         Ir para Dashboard
                       </Button>
                     </div>
@@ -1125,60 +1152,60 @@ export function UserDashboard() {
             </div>
           </TabsContent>
 
-          {/* Results Tab */}
+          {/* Results Tab - Mobile Optimized */}
           <TabsContent value="results">
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <Tabs value={resultsTab} onValueChange={setResultsTab}>
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="diet">Dieta</TabsTrigger>
-                  <TabsTrigger value="workout">Treino</TabsTrigger>
-                  <TabsTrigger value="analysis">Análise</TabsTrigger>
+                  <TabsTrigger value="diet" className="text-xs sm:text-sm">Dieta</TabsTrigger>
+                  <TabsTrigger value="workout" className="text-xs sm:text-sm">Treino</TabsTrigger>
+                  <TabsTrigger value="analysis" className="text-xs sm:text-sm">Análise</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="diet">
                   {currentDietPlan ? (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                           <Utensils className="w-5 h-5" />
                           Seu Plano de Dieta
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                          <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                          <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+                            <div className="text-xl sm:text-2xl font-bold text-blue-600">
                               {currentDietPlan.dailyCalories}
                             </div>
-                            <div className="text-sm text-gray-600">Calorias/dia</div>
+                            <div className="text-xs sm:text-sm text-gray-600">Calorias/dia</div>
                           </div>
-                          <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">
+                          <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+                            <div className="text-xl sm:text-2xl font-bold text-green-600">
                               {currentDietPlan.macros.protein}g
                             </div>
-                            <div className="text-sm text-gray-600">Proteína</div>
+                            <div className="text-xs sm:text-sm text-gray-600">Proteína</div>
                           </div>
-                          <div className="text-center p-4 bg-orange-50 rounded-lg">
-                            <div className="text-2xl font-bold text-orange-600">
+                          <div className="text-center p-3 sm:p-4 bg-orange-50 rounded-lg">
+                            <div className="text-xl sm:text-2xl font-bold text-orange-600">
                               {currentDietPlan.macros.carbs}g
                             </div>
-                            <div className="text-sm text-gray-600">Carboidratos</div>
+                            <div className="text-xs sm:text-sm text-gray-600">Carboidratos</div>
                           </div>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
                           {currentDietPlan.meals.map((meal, index) => (
-                            <div key={index} className="border rounded-lg p-4">
+                            <div key={index} className="border rounded-lg p-3 sm:p-4">
                               <div className="flex items-center gap-2 mb-3">
                                 <Clock className="w-4 h-4 text-gray-500" />
-                                <h4 className="font-medium">{meal.name}</h4>
-                                <Badge variant="outline">{meal.time}</Badge>
+                                <h4 className="font-medium text-sm sm:text-base">{meal.name}</h4>
+                                <Badge variant="outline" className="text-xs">{meal.time}</Badge>
                               </div>
                               <div className="space-y-2">
                                 {meal.foods.map((food, foodIndex) => (
-                                  <div key={foodIndex} className="flex justify-between items-center text-sm">
-                                    <span>{food.food}</span>
-                                    <span className="text-gray-500">
+                                  <div key={foodIndex} className="flex justify-between items-center text-xs sm:text-sm">
+                                    <span className="flex-1 pr-2">{food.food}</span>
+                                    <span className="text-gray-500 flex-shrink-0">
                                       {food.quantity} {food.measurement}
                                     </span>
                                   </div>
@@ -1196,11 +1223,11 @@ export function UserDashboard() {
                           <Utensils className="w-12 h-12 text-gray-400 mx-auto" />
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">Nenhum plano de dieta</h3>
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 text-sm sm:text-base">
                               Gere seu plano personalizado na aba Dashboard
                             </p>
                           </div>
-                          <Button onClick={() => setActiveTab('dashboard')}>
+                          <Button onClick={() => setActiveTab('dashboard')} className="w-full sm:w-auto">
                             Ir para Dashboard
                           </Button>
                         </div>
@@ -1213,31 +1240,33 @@ export function UserDashboard() {
                   {currentWorkoutPlan ? (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                           <Dumbbell className="w-5 h-5" />
                           Seu Plano de Treino
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {currentWorkoutPlan.workouts.map((workout, index) => (
-                          <div key={index} className="border rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Target className="w-4 h-4 text-gray-500" />
-                              <h4 className="font-medium">{workout.day}</h4>
-                              <Badge variant="outline">{workout.focus}</Badge>
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                          {currentWorkoutPlan.workouts.map((workout, index) => (
+                            <div key={index} className="border rounded-lg p-3 sm:p-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Target className="w-4 h-4 text-gray-500" />
+                                <h4 className="font-medium text-sm sm:text-base">{workout.day}</h4>
+                                <Badge variant="outline" className="text-xs">{workout.focus}</Badge>
+                              </div>
+                              <div className="space-y-2">
+                                {workout.exercises.map((exercise, exerciseIndex) => (
+                                  <div key={exerciseIndex} className="flex justify-between items-center text-xs sm:text-sm">
+                                    <span className="flex-1 pr-2">{exercise.name}</span>
+                                    <span className="text-gray-500 flex-shrink-0">
+                                      {exercise.sets} séries × {exercise.reps} reps
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              {workout.exercises.map((exercise, exerciseIndex) => (
-                                <div key={exerciseIndex} className="flex justify-between items-center text-sm">
-                                  <span>{exercise.name}</span>
-                                  <span className="text-gray-500">
-                                    {exercise.sets} séries × {exercise.reps} reps
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </CardContent>
                     </Card>
                   ) : (
@@ -1247,11 +1276,11 @@ export function UserDashboard() {
                           <Dumbbell className="w-12 h-12 text-gray-400 mx-auto" />
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">Nenhum plano de treino</h3>
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 text-sm sm:text-base">
                               Gere seu plano personalizado na aba Dashboard
                             </p>
                           </div>
-                          <Button onClick={() => setActiveTab('dashboard')}>
+                          <Button onClick={() => setActiveTab('dashboard')} className="w-full sm:w-auto">
                             Ir para Dashboard
                           </Button>
                         </div>
@@ -1264,20 +1293,20 @@ export function UserDashboard() {
                   {currentBodyAnalysis ? (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                           <Activity className="w-5 h-5" />
                           Análise Corporal
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
                           {Object.entries(currentBodyAnalysis.photos).map(([position, photo]) => (
                             photo && (
                               <div key={position} className="space-y-2">
                                 <img 
                                   src={photo} 
                                   alt={position}
-                                  className="w-full h-32 object-cover rounded"
+                                  className="w-full h-24 sm:h-32 object-cover rounded"
                                 />
                                 <p className="text-xs text-center text-gray-500 capitalize">
                                   {position === 'front' ? 'Frente' : 
@@ -1291,17 +1320,17 @@ export function UserDashboard() {
 
                         <div className="space-y-4">
                           <div>
-                            <h4 className="font-medium mb-2">Análise</h4>
-                            <p className="text-gray-600">{currentBodyAnalysis.analysis}</p>
+                            <h4 className="font-medium mb-2 text-sm sm:text-base">Análise</h4>
+                            <p className="text-gray-600 text-sm sm:text-base">{currentBodyAnalysis.analysis}</p>
                           </div>
 
                           <div>
-                            <h4 className="font-medium mb-2">Recomendações</h4>
+                            <h4 className="font-medium mb-2 text-sm sm:text-base">Recomendações</h4>
                             <ul className="space-y-1">
                               {currentBodyAnalysis.recommendations.map((rec, index) => (
-                                <li key={index} className="flex items-start gap-2 text-gray-600">
+                                <li key={index} className="flex items-start gap-2 text-gray-600 text-sm sm:text-base">
                                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                                  {rec}
+                                  <span>{rec}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1316,11 +1345,11 @@ export function UserDashboard() {
                           <Activity className="w-12 h-12 text-gray-400 mx-auto" />
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">Nenhuma análise disponível</h3>
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 text-sm sm:text-base">
                               Adicione suas fotos e gere sua análise na aba Dashboard
                             </p>
                           </div>
-                          <Button onClick={() => setActiveTab('dashboard')}>
+                          <Button onClick={() => setActiveTab('dashboard')} className="w-full sm:w-auto">
                             Ir para Dashboard
                           </Button>
                         </div>

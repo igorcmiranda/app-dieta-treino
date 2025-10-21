@@ -17,6 +17,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FitAI Coach - Seu Personal Trainer com IA",
   description: "App de dieta e treinos personalizados com inteligência artificial",
+  viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no",
+  themeColor: "#2563eb",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "FitAI Coach"
+  },
+  formatDetection: {
+    telephone: false
+  }
 };
 
 export default function RootLayout({
@@ -28,12 +38,23 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <Script src="/lasy-bridge.js" strategy="beforeInteractive" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="theme-color" content="#2563eb" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="FitAI Coach" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
         suppressHydrationWarning
       >
-        {children}
+        <div className="min-h-screen w-full">
+          {children}
+        </div>
       </body>
     </html>
   );
