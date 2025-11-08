@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "export": "next build && next export",
+    "export": "next build",
+    "build:static": "next build",
     "start": "next start",
     "lint": "next lint",
+    "deploy:hostinger": "next build && echo 'Build completo! Faça upload da pasta out/ para public_html/ na Hostinger'",
     "cap:build": "next build && next export && cap sync",
     "cap:copy": "cap copy",
     "cap:add:ios": "cap add ios",
