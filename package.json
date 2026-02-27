@@ -2,6 +2,9 @@
   "name": "app-dieta-treino",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "debug": "^4.4.3"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
