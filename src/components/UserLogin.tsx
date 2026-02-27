@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,13 +20,8 @@ export function UserLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<AuthScreen>('login');
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
-  const { login } = useCurrentUser();
-  const { authenticateUser, users } = useUsers();
-
-  // Debug: mostrar usuários carregados
-  useEffect(() => {
-    console.log('Usuários carregados no UserLogin:', users);
-  }, [users]);
+  const { login, currentUser, updateCurrentUser } = useCurrentUser();
+  const { authenticateUser, updateUser } = useUsers();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,43 +29,15 @@ export function UserLogin() {
     setIsLoading(true);
 
     try {
-      console.log('Tentativa de login com:', { email, password });
-      console.log('Usuários disponíveis para autenticação:', users);
-
-      const user = authenticateUser(email, password);
-      console.log('Resultado da autenticação:', user);
+      const user = await authenticateUser(email, password);
       
       if (user) {
-        // Fazer login imediatamente
         login(user);
-        // Não precisa mais de reload - o estado será atualizado automaticamente
       } else {
         setError('Email ou senha incorretos');
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      setError('Erro interno. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    setIsLoading(true);
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    
-    try {
-      // Fazer login automaticamente
-      const user = authenticateUser(demoEmail, demoPassword);
-      if (user) {
-        login(user);
-        // Não precisa mais de reload - o estado será atualizado automaticamente
-      } else {
-        setError('Erro ao fazer login com credenciais demo');
-      }
-    } catch (error) {
-      console.error('Erro no demo login:', error);
       setError('Erro interno. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -88,34 +55,33 @@ export function UserLogin() {
   };
 
   const handlePaymentSuccess = () => {
-    // Após pagamento bem-sucedido, fazer login automático
-    // Em um app real, você criaria o usuário no banco de dados
-    // Por enquanto, vamos simular um login bem-sucedido
-    const newUser = {
-      id: 'new-user-' + Date.now(),
-      name: 'Novo Usuário',
-      email: 'novo@usuario.com',
-      password: 'temp123',
-      isAdmin: false,
-      emailVerified: true,
-      createdAt: new Date(),
-      subscription: {
-        plan: selectedPlan!,
-        status: 'active' as const,
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
-        canDowngrade: false,
-        downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000), // 4 meses
-        dietsUsedThisMonth: 0,
-        workoutsUsedThisMonth: 0
-      }
-    };
-    
-    login(newUser);
-    // Não precisa mais de reload - o estado será atualizado automaticamente
-  };
+    if (!selectedPlan || !currentUser) {
+      setError('Faça login para concluir a assinatura.');
+      setCurrentScreen('login');
+      return;
+    }
 
-  // Renderizar tela baseada no estado atual
+    const subscription = {
+      plan: selectedPlan,
+      status: 'active' as const,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      canDowngrade: false,
+      downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000),
+      dietsUsedThisMonth: 0,
+      workoutsUsedThisMonth: 0,
+      bodyAnalysesUsedThisMonth: 0,
+    };
+
+    const updatedUser = {
+      ...currentUser,
+      subscription,
+    };
+
+    updateCurrentUser({ subscription });
+    updateUser(currentUser.id, updatedUser);
+    login(updatedUser);
+  };
   if (currentScreen === 'register') {
     return (
       <UserRegister
@@ -238,41 +204,6 @@ export function UserLogin() {
               </Button>
             </div>
 
-            {/* Demo Credentials - Mobile Optimized */}
-            <div className="mt-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-              <h4 className="font-semibold text-sm sm:text-base text-blue-900 dark:text-blue-100 mb-3">
-                Contas de demonstração:
-              </h4>
-              <div className="space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isLoading}
-                  className="w-full text-left justify-start border-blue-200 hover:bg-blue-100 text-xs sm:text-sm py-2"
-                  onClick={() => handleDemoLogin('admin@fitai.com', 'admin123')}
-                >
-                  <strong>Admin:</strong>&nbsp;admin@fitai.com / admin123
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isLoading}
-                  className="w-full text-left justify-start border-blue-200 hover:bg-blue-100 text-xs sm:text-sm py-2"
-                  onClick={() => handleDemoLogin('user@fitai.com', 'user123')}
-                >
-                  <strong>Usuário:</strong>&nbsp;user@fitai.com / user123
-                </Button>
-              </div>
-            </div>
-
-            {/* Debug Info */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-                <p>Debug: {users.length} usuários carregados</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 

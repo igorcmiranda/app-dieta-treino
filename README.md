@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FitAI Coach
 
-## Getting Started
+Aplicação Next.js para geração de dieta, treino e análise corporal com autenticação e persistência em banco externo MySQL (pronto para Hostinger).
 
-First, run the development server:
+## Stack
+
+- Next.js 15 + React 19
+- API Routes (Next.js) para autenticação e dados
+- MySQL 8+ (Hostinger)
+- Sessão via cookie HTTP-only + JWT
+
+## 1) Configurar MySQL
+
+1. Crie um banco MySQL na Hostinger.
+2. Execute o script SQL:
+   - `mysql/schema.sql`
+
+## 2) Configurar variáveis de ambiente
+
+Crie `.env.local` com base no `.env.local.example`.
+
+Exemplo mínimo:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_DB_PROVIDER=mysql
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=seu_usuario_mysql
+MYSQL_PASSWORD=sua_senha_mysql
+MYSQL_DATABASE=fitai_coach
+AUTH_JWT_SECRET=troque_por_um_segredo_longo_e_aleatorio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 3) Rodar local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install --no-package-lock
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Abra: [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+## 4) Deploy na Hostinger
 
-To learn more about Next.js, take a look at the following resources:
+1. Suba o projeto como app Node/Next.js.
+2. Configure as variáveis de ambiente no painel da Hostinger.
+3. Configure o banco MySQL remoto no mesmo painel.
+4. Execute o SQL de `mysql/schema.sql` no banco.
+5. Build/start:
+   - Build: `npm run build`
+   - Start: `npm run start`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Persistência
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Com `NEXT_PUBLIC_DB_PROVIDER=mysql`, o app salva e carrega automaticamente no banco:
 
-## Deploy on Vercel
+- usuário e senha (hash bcrypt)
+- perfil
+- assinatura/plano
+- dieta gerada
+- treino gerado
+- análise corporal
+- progresso de treino
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Fallback local
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Sem configuração MySQL, o app usa `localStorage` (modo local/demo).

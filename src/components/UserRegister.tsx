@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UserPlus, Mail, Phone, CreditCard, ArrowLeft } from 'lucide-react';
+import { useCurrentUser, useUsers } from '@/lib/hooks';
+import { UserPlus, Mail, Phone, ArrowLeft } from 'lucide-react';
 
 interface UserRegisterProps {
   onBack: () => void;
@@ -13,6 +14,8 @@ interface UserRegisterProps {
 }
 
 export function UserRegister({ onBack, onRegisterSuccess }: UserRegisterProps) {
+  const { login } = useCurrentUser();
+  const { registerUser } = useUsers();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -107,20 +110,29 @@ export function UserRegister({ onBack, onRegisterSuccess }: UserRegisterProps) {
     setIsLoading(true);
 
     try {
-      // Simular criação de conta
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simular envio de email de verificação
-      setShowVerification(true);
+      const result = await registerUser({
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        phone: formData.phone.trim(),
+        cpf: formData.cpf.trim(),
+      });
+
+      if (result.requiresEmailVerification) {
+        setShowVerification(true);
+      } else {
+        login(result.user);
+        onRegisterSuccess();
+      }
     } catch (error) {
-      setErrors({ general: 'Erro ao criar conta. Tente novamente.' });
+      const message = error instanceof Error ? error.message : 'Erro ao criar conta. Tente novamente.';
+      setErrors({ general: message });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleVerificationComplete = () => {
-    // Simular verificação de email
     onRegisterSuccess();
   };
 

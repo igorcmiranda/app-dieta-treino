@@ -341,6 +341,7 @@ export function ProfileEditModal({ isOpen, onClose, user, onSave }: ProfileEditM
       
     } catch (error) {
       console.error('Erro ao salvar dados:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       
       // Log do erro
       logActivity({
@@ -351,7 +352,7 @@ export function ProfileEditModal({ isOpen, onClose, user, onSave }: ProfileEditM
         details: `Erro ao atualizar dados pessoais e de cobrança: ${error}`,
         status: 'error',
         metadata: {
-          error: error.toString(),
+          error: errorMessage,
           timestamp: new Date()
         }
       });

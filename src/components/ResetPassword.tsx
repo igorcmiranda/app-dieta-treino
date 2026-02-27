@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, Eye, EyeOff, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { usePasswordReset, useCurrentUser } from '@/lib/hooks';
+import { usePasswordReset } from '@/lib/hooks';
 
 interface ResetPasswordProps {
   token: string;
@@ -29,7 +29,6 @@ export function ResetPassword({ token, email, onBack, onSuccess }: ResetPassword
   }>({ valid: false, loading: true });
 
   const { validateToken, resetPassword } = usePasswordReset();
-  const { login } = useCurrentUser();
 
   // Validar token ao carregar o componente
   useEffect(() => {

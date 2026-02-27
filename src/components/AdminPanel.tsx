@@ -29,13 +29,15 @@ export function AdminPanel() {
         name: 'Administrador',
         email: 'admin@fitai.com',
         password: 'admin123',
-        isAdmin: true
+        isAdmin: true,
+        emailVerified: true
       });
       addUser({
         name: 'João Silva',
         email: 'user@fitai.com',
         password: 'user123',
-        isAdmin: false
+        isAdmin: false,
+        emailVerified: true
       });
     }
   }, [users.length, addUser]);
@@ -45,7 +47,8 @@ export function AdminPanel() {
     if (newUser.name && newUser.email && newUser.password) {
       addUser({
         ...newUser,
-        isAdmin: false
+        isAdmin: false,
+        emailVerified: false
       });
       setNewUser({ name: '', email: '', password: '' });
     }

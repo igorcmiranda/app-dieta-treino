@@ -9,6 +9,7 @@ export interface User {
   cpf?: string;
   isAdmin: boolean;
   profile?: UserProfile;
+  billing?: UserBilling;
   subscription?: UserSubscription;
   emailVerified: boolean;
   createdAt: Date;
@@ -22,6 +23,8 @@ export interface UserProfile {
   activityLevel: 'sedentario' | 'leve' | 'moderado' | 'intenso' | 'muito-intenso';
   goal: 'engordar' | 'emagrecer' | 'manter-peso-perder-gordura';
   preferredMuscleGroups: string[];
+  foodRestrictions: string[];
+  foodPreferences: string[];
 }
 
 export interface UserSubscription {
@@ -33,6 +36,26 @@ export interface UserSubscription {
   downgradableDate?: Date; // Data quando pode fazer downgrade
   dietsUsedThisMonth: number;
   workoutsUsedThisMonth: number;
+  bodyAnalysesUsedThisMonth: number;
+}
+
+export interface UserBilling {
+  fullName: string;
+  email: string;
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  maskedCpf?: string;
+  cardBrand?: string;
+  cardLast4?: string;
+  cardHolderName?: string;
+  cardExpMonth?: string;
+  cardExpYear?: string;
+  demoMode?: boolean;
+  updatedAt: Date;
 }
 
 export interface SubscriptionPlan {
@@ -144,6 +167,19 @@ export interface AIResponse {
   success: boolean;
   data?: any;
   error?: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  action: string;
+  details: string;
+  status: 'success' | 'error' | 'warning';
+  timestamp: Date | string;
+  ip?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface PaymentData {

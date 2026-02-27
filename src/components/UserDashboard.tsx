@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyses, useWorkoutProgress } from '@/lib/hooks';
 import { UserProfile, FoodEntry, WorkoutProgress, MealEntry } from '@/lib/types';
 import { generateDietPlan, generateWorkoutPlan } from '@/lib/fitness-utils';
+import { analyzeBodyPhotos } from '@/lib/body-analysis';
 import { canAccessAI, hasActiveSubscription } from '@/lib/subscription-utils';
 import { SubscriptionRequired } from './SubscriptionRequired';
 import { SubscriptionPlans } from './SubscriptionPlans';
@@ -81,7 +82,9 @@ export function UserDashboard() {
     weight: 0,
     activityLevel: 'moderado',
     goal: 'manter-peso-perder-gordura',
-    preferredMuscleGroups: []
+    preferredMuscleGroups: [],
+    foodRestrictions: [],
+    foodPreferences: []
   });
 
   // Estados da alimentação - NOVO SISTEMA
@@ -240,7 +243,7 @@ export function UserDashboard() {
       // Simular análise de IA (em produção, seria uma chamada para API de OCR/Vision)
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Dados simulados extraídos do arquivo
+      // Dados simulados extraídos do arquivo (6 refeições)
       const extractedMeals: MealEntry[] = [
         {
           name: 'Café da manhã',
@@ -267,6 +270,31 @@ export function UserDashboard() {
             { food: 'Arroz integral', quantity: '100', measurement: 'gramas' },
             { food: 'Brócolis refogado', quantity: '100', measurement: 'gramas' },
             { food: 'Azeite extra virgem', quantity: '1', measurement: 'colher-sopa' }
+          ]
+        },
+        {
+          name: 'Lanche da tarde',
+          time: '16:00',
+          foods: [
+            { food: 'Iogurte natural', quantity: '170', measurement: 'gramas' },
+            { food: 'Aveia', quantity: '20', measurement: 'gramas' }
+          ]
+        },
+        {
+          name: 'Jantar',
+          time: '19:30',
+          foods: [
+            { food: 'Tilápia grelhada', quantity: '160', measurement: 'gramas' },
+            { food: 'Batata-doce', quantity: '120', measurement: 'gramas' },
+            { food: 'Salada verde', quantity: '1', measurement: 'unidade' }
+          ]
+        },
+        {
+          name: 'Ceia',
+          time: '22:00',
+          foods: [
+            { food: 'Queijo cottage', quantity: '80', measurement: 'gramas' },
+            { food: 'Morangos', quantity: '6', measurement: 'unidade' }
           ]
         }
       ];
@@ -419,6 +447,21 @@ export function UserDashboard() {
     ).join('\n')}`);
   };
 
+  const extractFocusAreasFromAnalysis = (improvementAreas: string[]): string[] => {
+    const normalized = improvementAreas.join(' ').toLowerCase();
+    const focusMap = [
+      { key: 'peito', aliases: ['peito', 'peitoral'] },
+      { key: 'costas', aliases: ['costas', 'dorsal'] },
+      { key: 'pernas', aliases: ['pernas', 'coxa', 'gluteo', 'glúteo'] },
+      { key: 'bracos', aliases: ['braco', 'braço', 'biceps', 'bíceps', 'triceps', 'tríceps'] },
+      { key: 'ombros', aliases: ['ombro', 'deltoide'] }
+    ];
+
+    return focusMap
+      .filter(item => item.aliases.some(alias => normalized.includes(alias)))
+      .map(item => item.key);
+  };
+
   const generatePlans = async () => {
     if (!currentUser?.profile || currentMeals.length === 0) {
       alert('Por favor, complete seu perfil e adicione suas refeições antes de gerar os planos.');
@@ -435,28 +478,45 @@ export function UserDashboard() {
     setIsGenerating(true);
     
     try {
+      const flattenedFoods: FoodEntry[] = currentMeals.flatMap(meal =>
+        meal.foods.map(food => ({
+          food: food.food,
+          quantity: food.quantity,
+          measurement: food.measurement,
+          time: meal.time
+        }))
+      );
+
+      let analysisResult: Awaited<ReturnType<typeof analyzeBodyPhotos>> | null = null;
+      const hasAnyPhoto = Boolean(photos.front || photos.back || photos.left || photos.right);
+
+      if (hasAnyPhoto) {
+        analysisResult = await analyzeBodyPhotos(photos);
+      }
+
       // Gerar plano de dieta
-      const dietPlan = await generateDietPlan(currentUser.profile, currentMeals);
+      const dietPlan = await generateDietPlan(currentUser.profile, flattenedFoods);
       addDietPlan({
-        userId: currentUser.id,
-        ...dietPlan
+        ...dietPlan,
+        userId: currentUser.id
       });
 
       // Gerar plano de treino
-      const workoutPlan = await generateWorkoutPlan(currentUser.profile);
+      const focusAreasFromAnalysis = analysisResult
+        ? extractFocusAreasFromAnalysis(analysisResult.improvementAreas)
+        : [];
+      const workoutPlan = await generateWorkoutPlan(currentUser.profile, focusAreasFromAnalysis);
       addWorkoutPlan({
-        userId: currentUser.id,
-        ...workoutPlan
+        ...workoutPlan,
+        userId: currentUser.id
       });
 
       // Análise corporal com fotos
-      if (photos.front || photos.back || photos.left || photos.right) {
+      if (analysisResult && hasAnyPhoto) {
         const bodyAnalysis = {
           userId: currentUser.id,
           photos,
-          analysis: 'Análise corporal baseada nas fotos fornecidas...',
-          recommendations: ['Recomendação 1', 'Recomendação 2'],
-          date: new Date().toISOString()
+          analysis: analysisResult
         };
         addBodyAnalysis(bodyAnalysis);
       }
@@ -475,6 +535,37 @@ export function UserDashboard() {
   const currentDietPlan = currentUser ? getDietPlanByUserId(currentUser.id) : null;
   const currentWorkoutPlan = currentUser ? getWorkoutPlanByUserId(currentUser.id) : null;
   const currentBodyAnalysis = currentUser ? getBodyAnalysisByUserId(currentUser.id) : null;
+  const subscriptionPlan = currentUser?.subscription?.plan;
+  const planDisplayName = subscriptionPlan === 'starter'
+    ? 'Básico'
+    : subscriptionPlan === 'standard'
+      ? 'Standard'
+      : subscriptionPlan === 'premium'
+        ? 'Premium'
+        : 'Sem plano';
+  const headerTheme = subscriptionPlan === 'starter'
+    ? {
+        container: 'bg-green-100 border-green-200',
+        icon: 'from-green-500 to-emerald-600',
+        text: 'text-green-800'
+      }
+    : subscriptionPlan === 'standard'
+      ? {
+          container: 'bg-blue-100 border-blue-200',
+          icon: 'from-blue-500 to-indigo-600',
+          text: 'text-blue-800'
+        }
+      : subscriptionPlan === 'premium'
+        ? {
+            container: 'bg-purple-100 border-purple-200',
+            icon: 'from-purple-500 to-fuchsia-600',
+            text: 'text-purple-800'
+          }
+        : {
+            container: 'bg-gray-100 border-gray-200',
+            icon: 'from-gray-500 to-gray-600',
+            text: 'text-gray-700'
+          };
 
   // Função para lidar com seleção de plano
   const handlePlanSelection = (plan: 'starter' | 'standard' | 'premium') => {
@@ -485,10 +576,31 @@ export function UserDashboard() {
 
   // Função para lidar com pagamento bem-sucedido
   const handlePaymentSuccess = () => {
+    if (currentUser && selectedPlan) {
+      const subscription = {
+        plan: selectedPlan,
+        status: 'active' as const,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        canDowngrade: false,
+        downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000),
+        dietsUsedThisMonth: 0,
+        workoutsUsedThisMonth: 0,
+        bodyAnalysesUsedThisMonth: 0
+      };
+
+      const updatedUser = {
+        ...currentUser,
+        subscription
+      };
+
+      updateCurrentUser(updatedUser);
+      updateUser(currentUser.id, updatedUser);
+    }
+
     setShowPayment(false);
     setSelectedPlan(null);
     setSubscriptionFeature('');
-    // Atualizar usuário com nova assinatura seria feito aqui
     alert('✅ Pagamento realizado com sucesso! Agora você pode usar todas as funcionalidades.');
   };
 
@@ -503,9 +615,9 @@ export function UserDashboard() {
       
       <div className="w-full max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
         {/* Header - Responsivo */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+        <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 p-4 sm:p-6 rounded-xl border ${headerTheme.container}`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${headerTheme.icon} rounded-full flex items-center justify-center`}>
               <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>
@@ -513,6 +625,9 @@ export function UserDashboard() {
                 Olá, {currentUser.name}!
               </h1>
               <p className="text-sm sm:text-base text-gray-600">Bem-vindo ao seu dashboard</p>
+              <p className={`text-xs sm:text-sm font-semibold mt-1 ${headerTheme.text}`}>
+                Plano: {planDisplayName}
+              </p>
             </div>
           </div>
           <Button 
@@ -772,7 +887,7 @@ export function UserDashboard() {
                             <div className="grid grid-cols-2 gap-2">
                               <Select 
                                 value={newFood.measurement} 
-                                onValueChange={(value) => setNewFood(prev => ({ ...prev, measurement: value }))}
+                                onValueChange={(value) => setNewFood(prev => ({ ...prev, measurement: value as FoodEntry['measurement'] }))}
                               >
                                 <SelectTrigger>
                                   <SelectValue />
@@ -1026,7 +1141,7 @@ export function UserDashboard() {
                             <SelectContent>
                               {currentWorkoutPlan.workouts.map((workout) => (
                                 <SelectItem key={workout.day} value={workout.day}>
-                                  {workout.day} - {workout.focus}
+                                  {workout.day} - {workout.muscleGroup}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1198,7 +1313,7 @@ export function UserDashboard() {
                             <div key={index} className="border rounded-lg p-3 sm:p-4">
                               <div className="flex items-center gap-2 mb-3">
                                 <Clock className="w-4 h-4 text-gray-500" />
-                                <h4 className="font-medium text-sm sm:text-base">{meal.name}</h4>
+                                <h4 className="font-medium text-sm sm:text-base">{meal.meal}</h4>
                                 <Badge variant="outline" className="text-xs">{meal.time}</Badge>
                               </div>
                               <div className="space-y-2">
@@ -1206,7 +1321,7 @@ export function UserDashboard() {
                                   <div key={foodIndex} className="flex justify-between items-center text-xs sm:text-sm">
                                     <span className="flex-1 pr-2">{food.food}</span>
                                     <span className="text-gray-500 flex-shrink-0">
-                                      {food.quantity} {food.measurement}
+                                      {food.quantity}
                                     </span>
                                   </div>
                                 ))}
@@ -1252,7 +1367,7 @@ export function UserDashboard() {
                               <div className="flex items-center gap-2 mb-3">
                                 <Target className="w-4 h-4 text-gray-500" />
                                 <h4 className="font-medium text-sm sm:text-base">{workout.day}</h4>
-                                <Badge variant="outline" className="text-xs">{workout.focus}</Badge>
+                                <Badge variant="outline" className="text-xs">{workout.muscleGroup}</Badge>
                               </div>
                               <div className="space-y-2">
                                 {workout.exercises.map((exercise, exerciseIndex) => (
@@ -1321,13 +1436,13 @@ export function UserDashboard() {
                         <div className="space-y-4">
                           <div>
                             <h4 className="font-medium mb-2 text-sm sm:text-base">Análise</h4>
-                            <p className="text-gray-600 text-sm sm:text-base">{currentBodyAnalysis.analysis}</p>
+                            <p className="text-gray-600 text-sm sm:text-base">{currentBodyAnalysis.analysis.proportions}</p>
                           </div>
 
                           <div>
                             <h4 className="font-medium mb-2 text-sm sm:text-base">Recomendações</h4>
                             <ul className="space-y-1">
-                              {currentBodyAnalysis.recommendations.map((rec, index) => (
+                              {currentBodyAnalysis.analysis.recommendations.map((rec, index) => (
                                 <li key={index} className="flex items-start gap-2 text-gray-600 text-sm sm:text-base">
                                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                                   <span>{rec}</span>
@@ -1366,8 +1481,6 @@ export function UserDashboard() {
       {/* Modais de Assinatura */}
       {showSubscriptionPlans && (
         <SubscriptionRequired
-          isOpen={showSubscriptionPlans}
-          onClose={() => setShowSubscriptionPlans(false)}
           feature={subscriptionFeature}
           onSelectPlan={handlePlanSelection}
         />
@@ -1375,9 +1488,11 @@ export function UserDashboard() {
 
       {showPayment && selectedPlan && (
         <PaymentScreen
-          isOpen={showPayment}
-          onClose={() => setShowPayment(false)}
-          plan={selectedPlan}
+          selectedPlan={selectedPlan}
+          onBack={() => {
+            setShowPayment(false);
+            setShowSubscriptionPlans(true);
+          }}
           onPaymentSuccess={handlePaymentSuccess}
         />
       )}

@@ -1,12 +1,21 @@
 import { User, UserSubscription } from './types';
 
+function toValidDate(value: string | Date | undefined): Date | null {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function hasActiveSubscription(user: User): boolean {
   if (!user.subscription) return false;
   
+  const endDate = toValidDate(user.subscription.endDate);
+  if (!endDate) return false;
+
   const now = new Date();
   return (
     user.subscription.status === 'active' &&
-    user.subscription.endDate > now
+    endDate > now
   );
 }
 
@@ -61,8 +70,11 @@ export function canDowngrade(user: User): boolean {
   
   if (!subscription.downgradableDate) return false;
   
+  const downgradableDate = toValidDate(subscription.downgradableDate);
+  if (!downgradableDate) return false;
+
   const now = new Date();
-  return now >= subscription.downgradableDate;
+  return now >= downgradableDate;
 }
 
 export function getSubscriptionLimits(user: User) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useUsers } from '@/lib/hooks';
 
 interface AppInitializerProps {
   children: React.ReactNode;
@@ -9,7 +8,6 @@ interface AppInitializerProps {
 
 export function AppInitializer({ children }: AppInitializerProps) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const { users } = useUsers();
 
   useEffect(() => {
     // Aguardar um pouco para garantir que o localStorage foi carregado
