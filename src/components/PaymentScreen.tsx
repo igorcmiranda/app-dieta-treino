@@ -125,15 +125,28 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
         throw new Error(result?.error || 'Erro ao processar assinatura no Mercado Pago.');
       }
 
-      if (!result?.subscription) {
-        if (result?.requiresAction) {
-          const checkoutUrl = result?.init_point || result?.sandbox_init_point;
-          if (checkoutUrl) {
-            window.location.href = checkoutUrl;
-            return;
-          }
+      if (result?.requiresAction) {
+        const checkoutUrl = result?.init_point || result?.sandbox_init_point;
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl;
+          return;
         }
-        throw new Error('Assinatura não retornada pelo servidor.');
+        throw new Error('O Mercado Pago solicitou uma etapa adicional de autenticação.');
+      }
+
+      const isConfirmedPayment =
+        result?.success === true &&
+        String(result?.first_payment_status || '').toLowerCase() === 'approved' &&
+        String(result?.status || '').toLowerCase() === 'authorized' &&
+        Boolean(result?.subscription);
+
+      if (!isConfirmedPayment) {
+        const providerDetail = result?.providerStatusDetail || result?.providerStatus || result?.status_detail;
+        throw new Error(
+          providerDetail
+            ? `Pagamento não aprovado: ${providerDetail}`
+            : 'Pagamento não aprovado pelo Mercado Pago.'
+        );
       }
 
       onPaymentSuccess(result.subscription as UserSubscription);
