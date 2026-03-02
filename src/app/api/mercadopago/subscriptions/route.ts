@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { getSessionFromRequest } from '@/lib/server/auth';
 import { dbExecute, isMySqlConfigured } from '@/lib/server/mysql';
 import { mercadoPagoRequest } from '@/lib/server/mercadopago';
@@ -100,6 +101,9 @@ export async function POST(req: NextRequest) {
     // 1) Cobra o primeiro mês imediatamente para validar crédito/saldo de verdade.
     const firstPayment = await mercadoPagoRequest<any>('/v1/payments', {
       method: 'POST',
+      headers: {
+        'X-Idempotency-Key': randomUUID(),
+      },
       body: JSON.stringify({
         transaction_amount: selectedPlan.amount,
         token: cardToken.id,
