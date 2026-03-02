@@ -178,6 +178,8 @@ export async function POST(req: NextRequest) {
         installments: normalizedPayment.installments || 1,
         payment_method_id: paymentMethodId,
         issuer_id: normalizedPayment.issuerId,
+        binary_mode: true,
+        capture: true,
         payer: {
           email: normalizedPayment.payerEmail || session.email,
           identification: {
@@ -190,13 +192,21 @@ export async function POST(req: NextRequest) {
     });
 
     const firstPaymentStatus = String(firstPayment?.status || '').toLowerCase();
-    if (firstPaymentStatus !== 'approved') {
+    const firstPaymentStatusDetail = String(firstPayment?.status_detail || '').toLowerCase();
+    const isFirstPaymentApproved =
+      firstPaymentStatus === 'approved' && firstPaymentStatusDetail === 'accredited';
+
+    if (!isFirstPaymentApproved) {
       return NextResponse.json(
         {
-          error: firstPayment?.status_detail || 'Pagamento não aprovado pelo Mercado Pago.',
+          error:
+            firstPayment?.status_detail ||
+            firstPayment?.status ||
+            'Pagamento não aprovado pelo Mercado Pago.',
           providerStatus: firstPayment?.status,
           providerStatusDetail: firstPayment?.status_detail,
           paymentId: firstPayment?.id,
+          transactionAmount: firstPayment?.transaction_amount,
         },
         { status: 402 }
       );
