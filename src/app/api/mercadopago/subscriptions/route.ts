@@ -97,8 +97,41 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    const backUrl = `${req.nextUrl.origin}/?subscription_checkout=mercadopago`;
+    // 1) Cobra o primeiro mês imediatamente para validar crédito/saldo de verdade.
+    const firstPayment = await mercadoPagoRequest<any>('/v1/payments', {
+      method: 'POST',
+      body: JSON.stringify({
+        transaction_amount: selectedPlan.amount,
+        token: cardToken.id,
+        description: `FitAI Coach - Plano ${selectedPlan.name} (primeira cobrança)`,
+        installments: 1,
+        payment_method_id: cardToken.payment_method_id,
+        payer: {
+          email: session.email,
+          identification: {
+            type: 'CPF',
+            number: normalizedPayment.cpf,
+          },
+        },
+        external_reference: `${session.userId}|${selectedPlanId}|first_payment`,
+      }),
+    });
 
+    const firstPaymentStatus = String(firstPayment?.status || '').toLowerCase();
+    if (firstPaymentStatus !== 'approved') {
+      return NextResponse.json(
+        {
+          error: firstPayment?.status_detail || 'Pagamento não aprovado pelo Mercado Pago.',
+          providerStatus: firstPayment?.status,
+          providerStatusDetail: firstPayment?.status_detail,
+          paymentId: firstPayment?.id,
+        },
+        { status: 402 }
+      );
+    }
+
+    // 2) Se a cobrança foi aprovada, cria a assinatura recorrente mensal.
+    const backUrl = `${req.nextUrl.origin}/?subscription_checkout=mercadopago`;
     const preapproval = await mercadoPagoRequest<any>('/preapproval', {
       method: 'POST',
       body: JSON.stringify({
@@ -153,6 +186,8 @@ export async function POST(req: NextRequest) {
       success: true,
       id: preapproval?.id,
       status: preapproval?.status,
+      first_payment_id: firstPayment?.id,
+      first_payment_status: firstPayment?.status,
       payer_email: preapproval?.payer_email || session.email,
       payment_method_id: cardToken.payment_method_id,
       card_last4: cardToken.last_four_digits,
