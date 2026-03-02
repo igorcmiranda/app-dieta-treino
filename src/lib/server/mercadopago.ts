@@ -23,12 +23,15 @@ export async function mercadoPagoRequest<T>(path: string, init?: RequestInit): P
   const data = await response.json();
 
   if (!response.ok) {
-    const causes = Array.isArray(data?.cause)
+    const providerCauses = Array.isArray(data?.causes)
+      ? data.causes
+      : Array.isArray(data?.cause)
       ? data.cause
+      : [];
+    const causes = providerCauses
           .map((item: any) => item?.description || item?.code)
           .filter(Boolean)
-          .join(' | ')
-      : '';
+          .join(' | ');
     const message =
       causes ||
       data?.message ||
