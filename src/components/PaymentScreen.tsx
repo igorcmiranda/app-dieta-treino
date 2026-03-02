@@ -149,17 +149,30 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
     setIsProcessing(true);
 
     try {
-      // Simular processamento do pagamento
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      setShowSuccess(true);
-      
-      // Após 2 segundos, chamar onPaymentSuccess
-      setTimeout(() => {
-        onPaymentSuccess();
-      }, 2000);
+      const response = await fetch('/api/mercadopago/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          plan: selectedPlan,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Erro ao iniciar checkout Mercado Pago.');
+      }
+
+      const checkoutUrl = result.init_point || result.sandbox_init_point;
+      if (!checkoutUrl) {
+        throw new Error('Mercado Pago não retornou URL de checkout.');
+      }
+
+      window.location.href = checkoutUrl;
     } catch (error) {
-      setErrors({ general: 'Erro ao processar pagamento. Tente novamente.' });
+      const message = error instanceof Error ? error.message : 'Erro ao processar pagamento. Tente novamente.';
+      setErrors({ general: message });
     } finally {
       setIsProcessing(false);
     }
