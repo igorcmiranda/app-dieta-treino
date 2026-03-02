@@ -28,17 +28,32 @@ function normalizePaymentInput(input: PaymentInput) {
   const cardNumber = sanitizeDigits(input.cardNumber || '');
   const cvv = sanitizeDigits(input.cvv || '');
   const cpf = sanitizeDigits(input.cpf || '');
-  const [rawMonth, rawYear] = String(input.expiryDate || '').split('/');
-  const month = sanitizeDigits(rawMonth || '');
-  const year = sanitizeDigits(rawYear || '');
+  const expiryDigits = sanitizeDigits(String(input.expiryDate || ''));
+  const monthRaw = expiryDigits.slice(0, 2);
+  const yearRaw = expiryDigits.slice(2);
+
+  const monthNumber = Number(monthRaw);
+  const normalizedMonth =
+    Number.isFinite(monthNumber) && monthNumber >= 1 && monthNumber <= 12
+      ? monthNumber
+      : null;
+
+  let normalizedYear: number | null = null;
+  if (yearRaw.length >= 4) {
+    const y = Number(yearRaw.slice(0, 4));
+    normalizedYear = Number.isFinite(y) ? y : null;
+  } else if (yearRaw.length >= 2) {
+    const y = Number(yearRaw.slice(0, 2));
+    normalizedYear = Number.isFinite(y) ? 2000 + y : null;
+  }
 
   return {
     cardNumber,
     cvv,
     cpf,
     cardName: String(input.cardName || '').trim(),
-    month,
-    year: year.length === 2 ? `20${year}` : year,
+    month: normalizedMonth,
+    year: normalizedYear,
   };
 }
 
@@ -77,6 +92,13 @@ export async function POST(req: NextRequest) {
     const selectedPlanId = plan as PlanId;
     const selectedPlan = PLAN_CONFIG[selectedPlanId];
     const normalizedPayment = normalizePaymentInput(paymentData || {});
+
+    if (!normalizedPayment.month || !normalizedPayment.year) {
+      return NextResponse.json(
+        { error: 'Data de validade inválida. Use MM/AA.' },
+        { status: 400 }
+      );
+    }
 
     const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
       '/v1/card_tokens',
