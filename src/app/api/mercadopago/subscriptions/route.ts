@@ -23,57 +23,21 @@ function sanitizeDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-function parseExpiryDate(expiryDate: string): { month: string; year: string } {
-  const [rawMonth, rawYear] = expiryDate.split('/');
-  const month = sanitizeDigits(rawMonth || '');
-  const year = sanitizeDigits(rawYear || '');
-
-  if (month.length !== 2 || year.length !== 2) {
-    throw new Error('Data de validade inválida. Use MM/AA.');
-  }
-
-  const monthNumber = Number(month);
-  if (monthNumber < 1 || monthNumber > 12) {
-    throw new Error('Mês de validade inválido.');
-  }
-
-  return {
-    month,
-    year: `20${year}`,
-  };
-}
-
-function validatePaymentInput(input: PaymentInput) {
+function normalizePaymentInput(input: PaymentInput) {
   const cardNumber = sanitizeDigits(input.cardNumber || '');
   const cvv = sanitizeDigits(input.cvv || '');
   const cpf = sanitizeDigits(input.cpf || '');
-
-  if (cardNumber.length < 13 || cardNumber.length > 19) {
-    throw new Error('Número do cartão inválido.');
-  }
-
-  if (cvv.length < 3 || cvv.length > 4) {
-    throw new Error('CVV inválido.');
-  }
-
-  if (!input.cardName || !input.cardName.trim()) {
-    throw new Error('Nome no cartão é obrigatório.');
-  }
-
-  if (cpf.length !== 11) {
-    throw new Error('CPF inválido.');
-  }
-
-  if (!input.expiryDate) {
-    throw new Error('Data de validade é obrigatória.');
-  }
+  const [rawMonth, rawYear] = String(input.expiryDate || '').split('/');
+  const month = sanitizeDigits(rawMonth || '');
+  const year = sanitizeDigits(rawYear || '');
 
   return {
     cardNumber,
     cvv,
     cpf,
-    cardName: input.cardName.trim(),
-    ...parseExpiryDate(input.expiryDate),
+    cardName: String(input.cardName || '').trim(),
+    month,
+    year: year.length === 2 ? `20${year}` : year,
   };
 }
 
@@ -111,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     const selectedPlanId = plan as PlanId;
     const selectedPlan = PLAN_CONFIG[selectedPlanId];
-    const normalizedPayment = validatePaymentInput(paymentData || {});
+    const normalizedPayment = normalizePaymentInput(paymentData || {});
 
     const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
       '/v1/card_tokens',

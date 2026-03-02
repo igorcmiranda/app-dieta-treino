@@ -77,41 +77,6 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
     return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!paymentData.cardNumber.replace(/\s/g, '')) {
-      newErrors.cardNumber = 'Número do cartão é obrigatório';
-    } else if (paymentData.cardNumber.replace(/\s/g, '').length < 13) {
-      newErrors.cardNumber = 'Número do cartão inválido';
-    }
-
-    if (!paymentData.expiryDate) {
-      newErrors.expiryDate = 'Data de validade é obrigatória';
-    } else if (!/^\d{2}\/\d{2}$/.test(paymentData.expiryDate)) {
-      newErrors.expiryDate = 'Formato: MM/AA';
-    }
-
-    if (!paymentData.cvv) {
-      newErrors.cvv = 'CVV é obrigatório';
-    } else if (paymentData.cvv.length < 3 || paymentData.cvv.length > 4) {
-      newErrors.cvv = 'CVV deve ter 3 ou 4 dígitos';
-    }
-
-    if (!paymentData.cardName.trim()) {
-      newErrors.cardName = 'Nome no cartão é obrigatório';
-    }
-
-    if (!paymentData.cpf) {
-      newErrors.cpf = 'CPF é obrigatório';
-    } else if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(paymentData.cpf)) {
-      newErrors.cpf = 'Formato: 000.000.000-00';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleInputChange = (field: keyof PaymentData, value: string) => {
     let formattedValue = value;
 
@@ -138,10 +103,7 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    setErrors({});
 
     setIsProcessing(true);
 

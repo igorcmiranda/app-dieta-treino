@@ -23,7 +23,18 @@ export async function mercadoPagoRequest<T>(path: string, init?: RequestInit): P
   const data = await response.json();
 
   if (!response.ok) {
-    const message = data?.message || data?.error || `Erro Mercado Pago (${response.status})`;
+    const causes = Array.isArray(data?.cause)
+      ? data.cause
+          .map((item: any) => item?.description || item?.code)
+          .filter(Boolean)
+          .join(' | ')
+      : '';
+    const message =
+      causes ||
+      data?.message ||
+      data?.error_description ||
+      data?.error ||
+      `Erro Mercado Pago (${response.status})`;
     throw new Error(message);
   }
 
