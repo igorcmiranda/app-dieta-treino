@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyses, useWorkoutProgress } from '@/lib/hooks';
-import { UserProfile, FoodEntry, WorkoutProgress, MealEntry } from '@/lib/types';
+import { UserProfile, FoodEntry, WorkoutProgress, MealEntry, UserSubscription } from '@/lib/types';
 import { generateDietPlan, generateWorkoutPlan } from '@/lib/fitness-utils';
 import { analyzeBodyPhotos } from '@/lib/body-analysis';
 import { canAccessAI, hasActiveSubscription } from '@/lib/subscription-utils';
@@ -575,23 +575,18 @@ export function UserDashboard() {
   };
 
   // Função para lidar com pagamento bem-sucedido
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (subscription: UserSubscription) => {
     if (currentUser && selectedPlan) {
-      const subscription = {
-        plan: selectedPlan,
-        status: 'active' as const,
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        canDowngrade: false,
-        downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000),
-        dietsUsedThisMonth: 0,
-        workoutsUsedThisMonth: 0,
-        bodyAnalysesUsedThisMonth: 0
+      const normalizedSubscription = {
+        ...subscription,
+        startDate: new Date(subscription.startDate),
+        endDate: new Date(subscription.endDate),
+        downgradableDate: subscription.downgradableDate ? new Date(subscription.downgradableDate) : undefined,
       };
 
       const updatedUser = {
         ...currentUser,
-        subscription
+        subscription: normalizedSubscription
       };
 
       updateCurrentUser(updatedUser);

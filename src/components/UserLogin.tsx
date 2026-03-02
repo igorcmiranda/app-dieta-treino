@@ -10,6 +10,7 @@ import { LogIn, Dumbbell, Heart, Target, UserPlus } from 'lucide-react';
 import { UserRegister } from './UserRegister';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
+import { UserSubscription } from '@/lib/types';
 
 type AuthScreen = 'login' | 'register' | 'plans' | 'payment';
 
@@ -54,31 +55,26 @@ export function UserLogin() {
     setCurrentScreen('payment');
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (subscription: UserSubscription) => {
     if (!selectedPlan || !currentUser) {
       setError('Faça login para concluir a assinatura.');
       setCurrentScreen('login');
       return;
     }
 
-    const subscription = {
-      plan: selectedPlan,
-      status: 'active' as const,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      canDowngrade: false,
-      downgradableDate: new Date(Date.now() + 4 * 30 * 24 * 60 * 60 * 1000),
-      dietsUsedThisMonth: 0,
-      workoutsUsedThisMonth: 0,
-      bodyAnalysesUsedThisMonth: 0,
+    const normalizedSubscription = {
+      ...subscription,
+      startDate: new Date(subscription.startDate),
+      endDate: new Date(subscription.endDate),
+      downgradableDate: subscription.downgradableDate ? new Date(subscription.downgradableDate) : undefined,
     };
 
     const updatedUser = {
       ...currentUser,
-      subscription,
+      subscription: normalizedSubscription,
     };
 
-    updateCurrentUser({ subscription });
+    updateCurrentUser({ subscription: normalizedSubscription });
     updateUser(currentUser.id, updatedUser);
     login(updatedUser);
   };

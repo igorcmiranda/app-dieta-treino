@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/server/auth';
+import { dbExecute, isMySqlConfigured } from '@/lib/server/mysql';
 import { mercadoPagoRequest } from '@/lib/server/mercadopago';
 
 type PlanId = 'starter' | 'standard' | 'premium';
@@ -10,6 +11,92 @@ const PLAN_CONFIG: Record<PlanId, { name: string; amount: number }> = {
   premium: { name: 'Premium', amount: 49.97 },
 };
 
+type PaymentInput = {
+  cardNumber?: string;
+  expiryDate?: string;
+  cvv?: string;
+  cardName?: string;
+  cpf?: string;
+};
+
+function sanitizeDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function parseExpiryDate(expiryDate: string): { month: string; year: string } {
+  const [rawMonth, rawYear] = expiryDate.split('/');
+  const month = sanitizeDigits(rawMonth || '');
+  const year = sanitizeDigits(rawYear || '');
+
+  if (month.length !== 2 || year.length !== 2) {
+    throw new Error('Data de validade inválida. Use MM/AA.');
+  }
+
+  const monthNumber = Number(month);
+  if (monthNumber < 1 || monthNumber > 12) {
+    throw new Error('Mês de validade inválido.');
+  }
+
+  return {
+    month,
+    year: `20${year}`,
+  };
+}
+
+function validatePaymentInput(input: PaymentInput) {
+  const cardNumber = sanitizeDigits(input.cardNumber || '');
+  const cvv = sanitizeDigits(input.cvv || '');
+  const cpf = sanitizeDigits(input.cpf || '');
+
+  if (cardNumber.length < 13 || cardNumber.length > 19) {
+    throw new Error('Número do cartão inválido.');
+  }
+
+  if (cvv.length < 3 || cvv.length > 4) {
+    throw new Error('CVV inválido.');
+  }
+
+  if (!input.cardName || !input.cardName.trim()) {
+    throw new Error('Nome no cartão é obrigatório.');
+  }
+
+  if (cpf.length !== 11) {
+    throw new Error('CPF inválido.');
+  }
+
+  if (!input.expiryDate) {
+    throw new Error('Data de validade é obrigatória.');
+  }
+
+  return {
+    cardNumber,
+    cvv,
+    cpf,
+    cardName: input.cardName.trim(),
+    ...parseExpiryDate(input.expiryDate),
+  };
+}
+
+function buildLocalSubscription(plan: PlanId, providerSubscriptionId: string | null, providerStatus: string) {
+  const now = new Date();
+  const endDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  return {
+    plan,
+    status: 'active' as const,
+    startDate: now,
+    endDate,
+    canDowngrade: false,
+    downgradableDate: new Date(now.getTime() + 4 * 30 * 24 * 60 * 60 * 1000),
+    dietsUsedThisMonth: 0,
+    workoutsUsedThisMonth: 0,
+    bodyAnalysesUsedThisMonth: 0,
+    provider: 'mercadopago',
+    providerSubscriptionId,
+    providerStatus,
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = getSessionFromRequest(req);
@@ -17,38 +104,95 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     }
 
-    const { plan } = await req.json();
+    const { plan, paymentData } = await req.json();
     if (!plan || !PLAN_CONFIG[plan as PlanId]) {
       return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 });
     }
 
-    const selectedPlan = PLAN_CONFIG[plan as PlanId];
+    const selectedPlanId = plan as PlanId;
+    const selectedPlan = PLAN_CONFIG[selectedPlanId];
+    const normalizedPayment = validatePaymentInput(paymentData || {});
+
+    const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
+      '/v1/card_tokens',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          card_number: normalizedPayment.cardNumber,
+          expiration_month: normalizedPayment.month,
+          expiration_year: normalizedPayment.year,
+          security_code: normalizedPayment.cvv,
+          cardholder: {
+            name: normalizedPayment.cardName,
+            identification: {
+              type: 'CPF',
+              number: normalizedPayment.cpf,
+            },
+          },
+        }),
+      }
+    );
+
     const backUrl = `${req.nextUrl.origin}/?subscription_checkout=mercadopago`;
 
-    const payload = {
-      reason: `FitAI Coach - Plano ${selectedPlan.name}`,
-      external_reference: `${session.userId}|${plan}`,
-      payer_email: session.email,
-      auto_recurring: {
-        frequency: 1,
-        frequency_type: 'months',
-        transaction_amount: selectedPlan.amount,
-        currency_id: 'BRL',
-      },
-      back_url: backUrl,
-      status: 'pending',
-    };
-
-    const result = await mercadoPagoRequest<any>('/preapproval', {
+    const preapproval = await mercadoPagoRequest<any>('/preapproval', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        reason: `FitAI Coach - Plano ${selectedPlan.name}`,
+        external_reference: `${session.userId}|${selectedPlanId}`,
+        payer_email: session.email,
+        card_token_id: cardToken.id,
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: 'months',
+          transaction_amount: selectedPlan.amount,
+          currency_id: 'BRL',
+        },
+        back_url: backUrl,
+        status: 'authorized',
+      }),
     });
 
+    const preapprovalStatus = String(preapproval?.status || '').toLowerCase();
+    const isAuthorized = preapprovalStatus === 'authorized';
+
+    if (!isAuthorized) {
+      const initPoint = preapproval?.init_point || preapproval?.sandbox_init_point;
+      if (initPoint) {
+        return NextResponse.json({
+          success: false,
+          requiresAction: true,
+          id: preapproval?.id,
+          status: preapproval?.status,
+          init_point: preapproval?.init_point,
+          sandbox_init_point: preapproval?.sandbox_init_point,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          error: 'Pagamento não autorizado pelo Mercado Pago.',
+          providerStatus: preapproval?.status,
+          id: preapproval?.id,
+        },
+        { status: 402 }
+      );
+    }
+
+    const subscription = buildLocalSubscription(selectedPlanId, preapproval?.id || null, preapproval?.status || 'authorized');
+
+    if (isMySqlConfigured) {
+      await dbExecute('UPDATE users SET subscription_json = ? WHERE id = ?', [JSON.stringify(subscription), session.userId]);
+    }
+
     return NextResponse.json({
-      id: result.id,
-      init_point: result.init_point,
-      sandbox_init_point: result.sandbox_init_point,
-      status: result.status,
+      success: true,
+      id: preapproval?.id,
+      status: preapproval?.status,
+      payer_email: preapproval?.payer_email || session.email,
+      payment_method_id: cardToken.payment_method_id,
+      card_last4: cardToken.last_four_digits,
+      subscription,
     });
   } catch (error) {
     console.error('Erro ao criar assinatura Mercado Pago:', error);
@@ -59,19 +203,34 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const id = req.nextUrl.searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({
+        plans: Object.entries(PLAN_CONFIG).map(([key, value]) => ({
+          id: key,
+          name: value.name,
+          amount: value.amount,
+          currency: 'BRL',
+          recurrence: 'monthly',
+        })),
+      });
+    }
+
     const session = getSessionFromRequest(req);
     if (!session) {
       return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     }
 
-    const id = req.nextUrl.searchParams.get('id');
-    if (!id) {
-      return NextResponse.json({ error: 'ID da assinatura é obrigatório.' }, { status: 400 });
-    }
-
     const result = await mercadoPagoRequest<any>(`/preapproval/${id}`, {
       method: 'GET',
     });
+
+    const externalReference = String(result?.external_reference || '');
+    const [ownerUserId] = externalReference.split('|');
+
+    if (ownerUserId && ownerUserId !== session.userId) {
+      return NextResponse.json({ error: 'Assinatura não pertence ao usuário logado.' }, { status: 403 });
+    }
 
     return NextResponse.json(result);
   } catch (error) {
