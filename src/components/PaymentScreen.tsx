@@ -1,31 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
+  CreditCard,
+  Lock,
   ArrowLeft,
   Crown,
   Star,
   Zap,
   Shield,
   Calendar,
-  CreditCard,
 } from 'lucide-react';
-import { UserSubscription } from '@/lib/types';
-import { useCurrentUser } from '@/lib/hooks';
+import { PaymentData, UserSubscription } from '@/lib/types';
 
 interface PaymentScreenProps {
   selectedPlan: 'starter' | 'standard' | 'premium';
   onBack: () => void;
   onPaymentSuccess: (subscription: UserSubscription) => void;
-}
-
-declare global {
-  interface Window {
-    MercadoPago?: any;
-  }
 }
 
 const planDetails = {
@@ -49,210 +45,118 @@ const planDetails = {
   }
 };
 
-const BRICK_CONTAINER_ID = 'mp-card-payment-brick-container';
-
-function loadMercadoPagoSdk(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.resolve();
-  if (window.MercadoPago) return Promise.resolve();
-
-  const existingScript = document.querySelector<HTMLScriptElement>('script[data-mp-sdk="v2"]');
-  if (existingScript) {
-    return new Promise((resolve, reject) => {
-      existingScript.addEventListener('load', () => resolve(), { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('Falha ao carregar SDK do Mercado Pago.')), { once: true });
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://sdk.mercadopago.com/js/v2';
-    script.async = true;
-    script.defer = true;
-    script.setAttribute('data-mp-sdk', 'v2');
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Falha ao carregar SDK do Mercado Pago.'));
-    document.head.appendChild(script);
-  });
-}
-
 export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: PaymentScreenProps) {
+  const [paymentData, setPaymentData] = useState<PaymentData>({
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+    cardName: '',
+    cpf: '',
+    plan: selectedPlan
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isBrickLoading, setIsBrickLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [resolvedPublicKey, setResolvedPublicKey] = useState<string>('');
-  const brickControllerRef = useRef<any>(null);
-  const { currentUser } = useCurrentUser();
 
   const plan = planDetails[selectedPlan];
-  const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
 
-  const payerEmail = useMemo(() => currentUser?.email || '', [currentUser?.email]);
+  const formatCardNumber = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  };
 
-  useEffect(() => {
-    let active = true;
+  const formatExpiryDate = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length >= 2) {
+      return numbers.substring(0, 2) + '/' + numbers.substring(2, 4);
+    }
+    return numbers;
+  };
 
-    const loadPublicKey = async () => {
-      if (publicKey) {
-        setResolvedPublicKey(publicKey);
-        return;
-      }
+  const formatCPF = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
 
-      try {
-        const response = await fetch('/api/mercadopago/public-key', { cache: 'no-store' });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data?.error || 'Não foi possível carregar a chave pública do Mercado Pago.');
-        }
-        if (active) {
-          setResolvedPublicKey(String(data?.publicKey || ''));
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Não foi possível carregar a chave pública do Mercado Pago.';
-        if (active) {
-          setErrors({ general: message });
-          setIsBrickLoading(false);
-        }
-      }
-    };
+  const handleInputChange = (field: keyof PaymentData, value: string) => {
+    let formattedValue = value;
 
-    void loadPublicKey();
-    return () => {
-      active = false;
-    };
-  }, [publicKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!resolvedPublicKey) {
-      return () => {
-        cancelled = true;
-      };
+    if (field === 'cardNumber') {
+      formattedValue = formatCardNumber(value);
+      if (formattedValue.replace(/\s/g, '').length > 19) return;
+    } else if (field === 'expiryDate') {
+      formattedValue = formatExpiryDate(value);
+      if (formattedValue.replace(/\D/g, '').length > 4) return;
+    } else if (field === 'cvv') {
+      formattedValue = value.replace(/\D/g, '');
+      if (formattedValue.length > 4) return;
+    } else if (field === 'cpf') {
+      formattedValue = formatCPF(value);
+      if (formattedValue.replace(/\D/g, '').length > 11) return;
     }
 
-    const initBrick = async () => {
-      try {
-        setErrors({});
-        setIsBrickLoading(true);
+    setPaymentData(prev => ({ ...prev, [field]: formattedValue }));
 
-        if (!resolvedPublicKey) {
-          throw new Error('Chave pública do Mercado Pago não configurada.');
-        }
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
 
-        await loadMercadoPagoSdk();
-        if (cancelled) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
 
-        if (!window.MercadoPago) {
-          throw new Error('SDK do Mercado Pago não disponível no navegador.');
-        }
+    setIsProcessing(true);
 
-        const previousBrick = brickControllerRef.current;
-        if (previousBrick?.unmount) {
-          await previousBrick.unmount();
-          brickControllerRef.current = null;
-        }
+    try {
+      const response = await fetch('/api/mercadopago/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          plan: selectedPlan,
+          paymentData,
+        }),
+      });
 
-        const mp = new window.MercadoPago(resolvedPublicKey, { locale: 'pt-BR' });
-        const bricksBuilder = mp.bricks();
-
-        const controller = await bricksBuilder.create('cardPayment', BRICK_CONTAINER_ID, {
-          initialization: {
-            amount: plan.price,
-            payer: {
-              email: payerEmail,
-            },
-          },
-          customization: {
-            paymentMethods: {
-              maxInstallments: 1,
-            },
-          },
-          callbacks: {
-            onReady: () => {
-              if (!cancelled) setIsBrickLoading(false);
-            },
-            onSubmit: async (formData: any) => {
-              setIsProcessing(true);
-              setErrors({});
-
-              try {
-                const response = await fetch('/api/mercadopago/subscriptions', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    plan: selectedPlan,
-                    paymentData: formData,
-                  }),
-                });
-
-                const result = await response.json();
-                if (!response.ok) {
-                  throw new Error(result?.error || 'Erro ao processar assinatura no Mercado Pago.');
-                }
-
-                if (result?.requiresAction) {
-                  const checkoutUrl = result?.init_point || result?.sandbox_init_point;
-                  if (checkoutUrl) {
-                    window.location.href = checkoutUrl;
-                    return;
-                  }
-                  throw new Error('O Mercado Pago solicitou uma etapa adicional de autenticação.');
-                }
-
-                const isConfirmedPayment =
-                  result?.success === true &&
-                  String(result?.first_payment_status || '').toLowerCase() === 'approved' &&
-                  String(result?.status || '').toLowerCase() === 'authorized' &&
-                  Boolean(result?.subscription);
-
-                if (!isConfirmedPayment) {
-                  const providerDetail = result?.providerStatusDetail || result?.providerStatus || result?.status_detail;
-                  throw new Error(
-                    providerDetail
-                      ? `Pagamento não aprovado: ${providerDetail}`
-                      : 'Pagamento não aprovado pelo Mercado Pago.'
-                  );
-                }
-
-                onPaymentSuccess(result.subscription as UserSubscription);
-              } catch (error) {
-                const message = error instanceof Error ? error.message : 'Erro ao processar pagamento.';
-                setErrors({ general: message });
-                throw error;
-              } finally {
-                setIsProcessing(false);
-              }
-            },
-            onError: (error: any) => {
-              const message = error?.message || error?.cause?.[0]?.description || 'Erro no checkout do Mercado Pago.';
-              setErrors({ general: message });
-              setIsBrickLoading(false);
-            },
-          },
-        });
-
-        brickControllerRef.current = controller;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Erro ao inicializar checkout.';
-        setErrors({ general: message });
-        setIsBrickLoading(false);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Erro ao processar assinatura no Mercado Pago.');
       }
-    };
 
-    void initBrick();
-
-    return () => {
-      cancelled = true;
-      const brick = brickControllerRef.current;
-      if (brick?.unmount) {
-        void brick.unmount();
+      if (result?.requiresAction) {
+        const checkoutUrl = result?.init_point || result?.sandbox_init_point;
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl;
+          return;
+        }
+        throw new Error('O Mercado Pago solicitou uma etapa adicional de autenticação.');
       }
-      brickControllerRef.current = null;
-    };
-  }, [payerEmail, plan.price, resolvedPublicKey, selectedPlan, onPaymentSuccess]);
+
+      const isConfirmedPayment =
+        result?.success === true &&
+        String(result?.first_payment_status || '').toLowerCase() === 'approved' &&
+        String(result?.status || '').toLowerCase() === 'authorized' &&
+        Boolean(result?.subscription);
+
+      if (!isConfirmedPayment) {
+        const providerDetail = result?.providerStatusDetail || result?.providerStatus || result?.status_detail;
+        throw new Error(
+          providerDetail
+            ? `Pagamento não aprovado: ${providerDetail}`
+            : 'Pagamento não aprovado pelo Mercado Pago.'
+        );
+      }
+
+      onPaymentSuccess(result.subscription as UserSubscription);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao processar pagamento. Tente novamente.';
+      setErrors({ general: message });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 p-4">
@@ -263,7 +167,6 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
               variant="ghost"
               onClick={onBack}
               className="mb-4 text-blue-600 hover:text-blue-700"
-              disabled={isProcessing}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar aos planos
@@ -321,36 +224,144 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
                 <CreditCard className="w-5 h-5" />
-                Pagamento com Mercado Pago
+                Dados do pagamento
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {isBrickLoading && (
-                <div className="flex items-center justify-center gap-2 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
-                  Carregando checkout seguro...
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cardNumber" className="text-blue-800 dark:text-blue-200">
+                    Número do cartão
+                  </Label>
+                  <Input
+                    id="cardNumber"
+                    type="text"
+                    value={paymentData.cardNumber}
+                    onChange={(e) => handleInputChange('cardNumber', e.target.value)}
+                    placeholder="0000 0000 0000 0000"
+                    className={`border-blue-200 dark:border-blue-700 focus:ring-blue-500 ${
+                      errors.cardNumber ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {errors.cardNumber && (
+                    <p className="text-red-500 text-sm">{errors.cardNumber}</p>
+                  )}
                 </div>
-              )}
 
-              <div id={BRICK_CONTAINER_ID} className={isProcessing ? 'pointer-events-none opacity-70' : ''} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expiryDate" className="text-blue-800 dark:text-blue-200">
+                      Validade
+                    </Label>
+                    <Input
+                      id="expiryDate"
+                      type="text"
+                      value={paymentData.expiryDate}
+                      onChange={(e) => handleInputChange('expiryDate', e.target.value)}
+                      placeholder="MM/AA"
+                      className={`border-blue-200 dark:border-blue-700 focus:ring-blue-500 ${
+                        errors.expiryDate ? 'border-red-500' : ''
+                      }`}
+                    />
+                    {errors.expiryDate && (
+                      <p className="text-red-500 text-sm">{errors.expiryDate}</p>
+                    )}
+                  </div>
 
-              {errors.general && (
-                <div className="text-red-600 text-sm text-center bg-red-50 dark:bg-red-950 p-2 rounded">
-                  {errors.general}
+                  <div className="space-y-2">
+                    <Label htmlFor="cvv" className="text-blue-800 dark:text-blue-200">
+                      CVV
+                    </Label>
+                    <Input
+                      id="cvv"
+                      type="text"
+                      value={paymentData.cvv}
+                      onChange={(e) => handleInputChange('cvv', e.target.value)}
+                      placeholder="000"
+                      className={`border-blue-200 dark:border-blue-700 focus:ring-blue-500 ${
+                        errors.cvv ? 'border-red-500' : ''
+                      }`}
+                    />
+                    {errors.cvv && (
+                      <p className="text-red-500 text-sm">{errors.cvv}</p>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              <div className="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-semibold text-green-800 dark:text-green-200">
-                    Checkout seguro oficial Mercado Pago
-                  </span>
+                <div className="space-y-2">
+                  <Label htmlFor="cardName" className="text-blue-800 dark:text-blue-200">
+                    Nome no cartão
+                  </Label>
+                  <Input
+                    id="cardName"
+                    type="text"
+                    value={paymentData.cardName}
+                    onChange={(e) => handleInputChange('cardName', e.target.value)}
+                    placeholder="Nome como está no cartão"
+                    className={`border-blue-200 dark:border-blue-700 focus:ring-blue-500 ${
+                      errors.cardName ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {errors.cardName && (
+                    <p className="text-red-500 text-sm">{errors.cardName}</p>
+                  )}
                 </div>
-                <p className="text-xs text-green-600 dark:text-green-400">
-                  Os dados do cartão são capturados e tokenizados pelo SDK oficial do Mercado Pago.
-                </p>
-              </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cpf" className="text-blue-800 dark:text-blue-200">
+                    CPF do titular
+                  </Label>
+                  <Input
+                    id="cpf"
+                    type="text"
+                    value={paymentData.cpf}
+                    onChange={(e) => handleInputChange('cpf', e.target.value)}
+                    placeholder="000.000.000-00"
+                    className={`border-blue-200 dark:border-blue-700 focus:ring-blue-500 ${
+                      errors.cpf ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {errors.cpf && (
+                    <p className="text-red-500 text-sm">{errors.cpf}</p>
+                  )}
+                </div>
+
+                {errors.general && (
+                  <div className="text-red-600 text-sm text-center bg-red-50 dark:bg-red-950 p-2 rounded">
+                    {errors.general}
+                  </div>
+                )}
+
+                <div className="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-semibold text-green-800 dark:text-green-200">
+                      Pagamento seguro
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Seus dados são protegidos com criptografia SSL de 256 bits.
+                  </p>
+                </div>
+
+                <Button
+                  type="submit"
+                  className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white text-lg py-6`}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Processando pagamento...
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 mr-2" />
+                      Finalizar pagamento - R$ {plan.price.toFixed(2).replace('.', ',')}
+                    </>
+                  )}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>

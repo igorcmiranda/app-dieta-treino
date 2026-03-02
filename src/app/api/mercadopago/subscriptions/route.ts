@@ -13,18 +13,6 @@ const PLAN_CONFIG: Record<PlanId, { name: string; amount: number }> = {
 };
 
 type PaymentInput = {
-  token?: string;
-  payment_method_id?: string;
-  issuer_id?: number | string;
-  installments?: number | string;
-  transaction_amount?: number;
-  payer?: {
-    email?: string;
-    identification?: {
-      type?: string;
-      number?: string;
-    };
-  };
   cardNumber?: string;
   expiryDate?: string;
   cvv?: string;
@@ -37,53 +25,20 @@ function sanitizeDigits(value: string): string {
 }
 
 function normalizePaymentInput(input: PaymentInput) {
-  const token = String(input.token || '').trim();
-  const paymentMethodId = String(input.payment_method_id || '').trim();
-  const payerEmail = String(input.payer?.email || '').trim();
-  const payerIdentificationNumber = sanitizeDigits(String(input.payer?.identification?.number || ''));
-  const payerIdentificationType = String(input.payer?.identification?.type || 'CPF').trim();
-  const installments = Number(input.installments || 1);
-  const issuerIdRaw = input.issuer_id;
-  const issuerId = issuerIdRaw !== undefined && issuerIdRaw !== null && String(issuerIdRaw).trim() !== ''
-    ? Number(issuerIdRaw)
-    : undefined;
-
   const cardNumber = sanitizeDigits(input.cardNumber || '');
   const cvv = sanitizeDigits(input.cvv || '');
   const cpf = sanitizeDigits(input.cpf || '');
-  const expiryDigits = sanitizeDigits(String(input.expiryDate || ''));
-  const monthRaw = expiryDigits.slice(0, 2);
-  const yearRaw = expiryDigits.slice(2);
-
-  const monthNumber = Number(monthRaw);
-  const normalizedMonth =
-    Number.isFinite(monthNumber) && monthNumber >= 1 && monthNumber <= 12
-      ? monthNumber
-      : null;
-
-  let normalizedYear: number | null = null;
-  if (yearRaw.length >= 4) {
-    const y = Number(yearRaw.slice(0, 4));
-    normalizedYear = Number.isFinite(y) ? y : null;
-  } else if (yearRaw.length >= 2) {
-    const y = Number(yearRaw.slice(0, 2));
-    normalizedYear = Number.isFinite(y) ? 2000 + y : null;
-  }
+  const [rawMonth, rawYear] = String(input.expiryDate || '').split('/');
+  const month = sanitizeDigits(rawMonth || '');
+  const year = sanitizeDigits(rawYear || '');
 
   return {
-    token,
-    paymentMethodId,
-    payerEmail,
-    payerIdentificationType: payerIdentificationType || 'CPF',
-    payerIdentificationNumber,
-    installments: Number.isFinite(installments) && installments > 0 ? installments : 1,
-    issuerId: issuerId !== undefined && Number.isFinite(issuerId) ? issuerId : undefined,
     cardNumber,
     cvv,
     cpf,
     cardName: String(input.cardName || '').trim(),
-    month: normalizedMonth,
-    year: normalizedYear,
+    month,
+    year: year.length === 2 ? `20${year}` : year,
   };
 }
 
@@ -123,47 +78,25 @@ export async function POST(req: NextRequest) {
     const selectedPlan = PLAN_CONFIG[selectedPlanId];
     const normalizedPayment = normalizePaymentInput(paymentData || {});
 
-    const needsCardTokenGeneration = !normalizedPayment.token;
-
-    if (needsCardTokenGeneration && (!normalizedPayment.month || !normalizedPayment.year)) {
-      return NextResponse.json(
-        { error: 'Data de validade inválida. Use MM/AA.' },
-        { status: 400 }
-      );
-    }
-
-    let paymentToken = normalizedPayment.token;
-    let paymentMethodId = normalizedPayment.paymentMethodId;
-    let cardLast4: string | undefined;
-
-    if (!paymentToken) {
-      const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
-        '/v1/card_tokens',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            card_number: normalizedPayment.cardNumber,
-            expiration_month: normalizedPayment.month,
-            expiration_year: normalizedPayment.year,
-            security_code: normalizedPayment.cvv,
-            cardholder: {
-              name: normalizedPayment.cardName,
-              identification: {
-                type: 'CPF',
-                number: normalizedPayment.cpf,
-              },
+    const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
+      '/v1/card_tokens',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          card_number: normalizedPayment.cardNumber,
+          expiration_month: normalizedPayment.month,
+          expiration_year: normalizedPayment.year,
+          security_code: normalizedPayment.cvv,
+          cardholder: {
+            name: normalizedPayment.cardName,
+            identification: {
+              type: 'CPF',
+              number: normalizedPayment.cpf,
             },
-          }),
-        }
-      );
-      paymentToken = cardToken.id;
-      paymentMethodId = paymentMethodId || cardToken.payment_method_id || '';
-      cardLast4 = cardToken.last_four_digits;
-    }
-
-    if (!paymentToken) {
-      return NextResponse.json({ error: 'Token de pagamento não informado.' }, { status: 400 });
-    }
+          },
+        }),
+      }
+    );
 
     // 1) Cobra o primeiro mês imediatamente para validar crédito/saldo de verdade.
     const firstPayment = await mercadoPagoRequest<any>('/v1/payments', {
@@ -173,18 +106,15 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         transaction_amount: selectedPlan.amount,
-        token: paymentToken,
+        token: cardToken.id,
         description: `FitAI Coach - Plano ${selectedPlan.name} (primeira cobrança)`,
-        installments: normalizedPayment.installments || 1,
-        payment_method_id: paymentMethodId,
-        issuer_id: normalizedPayment.issuerId,
-        binary_mode: true,
-        capture: true,
+        installments: 1,
+        payment_method_id: cardToken.payment_method_id,
         payer: {
-          email: normalizedPayment.payerEmail || session.email,
+          email: session.email,
           identification: {
-            type: normalizedPayment.payerIdentificationType || 'CPF',
-            number: normalizedPayment.payerIdentificationNumber || normalizedPayment.cpf,
+            type: 'CPF',
+            number: normalizedPayment.cpf,
           },
         },
         external_reference: `${session.userId}|${selectedPlanId}|first_payment`,
@@ -192,21 +122,13 @@ export async function POST(req: NextRequest) {
     });
 
     const firstPaymentStatus = String(firstPayment?.status || '').toLowerCase();
-    const firstPaymentStatusDetail = String(firstPayment?.status_detail || '').toLowerCase();
-    const isFirstPaymentApproved =
-      firstPaymentStatus === 'approved' && firstPaymentStatusDetail === 'accredited';
-
-    if (!isFirstPaymentApproved) {
+    if (firstPaymentStatus !== 'approved') {
       return NextResponse.json(
         {
-          error:
-            firstPayment?.status_detail ||
-            firstPayment?.status ||
-            'Pagamento não aprovado pelo Mercado Pago.',
+          error: firstPayment?.status_detail || 'Pagamento não aprovado pelo Mercado Pago.',
           providerStatus: firstPayment?.status,
           providerStatusDetail: firstPayment?.status_detail,
           paymentId: firstPayment?.id,
-          transactionAmount: firstPayment?.transaction_amount,
         },
         { status: 402 }
       );
@@ -220,7 +142,7 @@ export async function POST(req: NextRequest) {
         reason: `FitAI Coach - Plano ${selectedPlan.name}`,
         external_reference: `${session.userId}|${selectedPlanId}`,
         payer_email: session.email,
-        card_token_id: paymentToken,
+        card_token_id: cardToken.id,
         auto_recurring: {
           frequency: 1,
           frequency_type: 'months',
@@ -271,8 +193,8 @@ export async function POST(req: NextRequest) {
       first_payment_id: firstPayment?.id,
       first_payment_status: firstPayment?.status,
       payer_email: preapproval?.payer_email || session.email,
-      payment_method_id: paymentMethodId,
-      card_last4: cardLast4,
+      payment_method_id: cardToken.payment_method_id,
+      card_last4: cardToken.last_four_digits,
       subscription,
     });
   } catch (error) {
