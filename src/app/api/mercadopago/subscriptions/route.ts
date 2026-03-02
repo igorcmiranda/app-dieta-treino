@@ -13,6 +13,18 @@ const PLAN_CONFIG: Record<PlanId, { name: string; amount: number }> = {
 };
 
 type PaymentInput = {
+  token?: string;
+  payment_method_id?: string;
+  issuer_id?: number | string;
+  installments?: number | string;
+  transaction_amount?: number;
+  payer?: {
+    email?: string;
+    identification?: {
+      type?: string;
+      number?: string;
+    };
+  };
   cardNumber?: string;
   expiryDate?: string;
   cvv?: string;
@@ -25,6 +37,17 @@ function sanitizeDigits(value: string): string {
 }
 
 function normalizePaymentInput(input: PaymentInput) {
+  const token = String(input.token || '').trim();
+  const paymentMethodId = String(input.payment_method_id || '').trim();
+  const payerEmail = String(input.payer?.email || '').trim();
+  const payerIdentificationNumber = sanitizeDigits(String(input.payer?.identification?.number || ''));
+  const payerIdentificationType = String(input.payer?.identification?.type || 'CPF').trim();
+  const installments = Number(input.installments || 1);
+  const issuerIdRaw = input.issuer_id;
+  const issuerId = issuerIdRaw !== undefined && issuerIdRaw !== null && String(issuerIdRaw).trim() !== ''
+    ? Number(issuerIdRaw)
+    : undefined;
+
   const cardNumber = sanitizeDigits(input.cardNumber || '');
   const cvv = sanitizeDigits(input.cvv || '');
   const cpf = sanitizeDigits(input.cpf || '');
@@ -48,6 +71,13 @@ function normalizePaymentInput(input: PaymentInput) {
   }
 
   return {
+    token,
+    paymentMethodId,
+    payerEmail,
+    payerIdentificationType: payerIdentificationType || 'CPF',
+    payerIdentificationNumber,
+    installments: Number.isFinite(installments) && installments > 0 ? installments : 1,
+    issuerId: issuerId !== undefined && Number.isFinite(issuerId) ? issuerId : undefined,
     cardNumber,
     cvv,
     cpf,
@@ -93,32 +123,47 @@ export async function POST(req: NextRequest) {
     const selectedPlan = PLAN_CONFIG[selectedPlanId];
     const normalizedPayment = normalizePaymentInput(paymentData || {});
 
-    if (!normalizedPayment.month || !normalizedPayment.year) {
+    const needsCardTokenGeneration = !normalizedPayment.token;
+
+    if (needsCardTokenGeneration && (!normalizedPayment.month || !normalizedPayment.year)) {
       return NextResponse.json(
         { error: 'Data de validade inválida. Use MM/AA.' },
         { status: 400 }
       );
     }
 
-    const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
-      '/v1/card_tokens',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          card_number: normalizedPayment.cardNumber,
-          expiration_month: normalizedPayment.month,
-          expiration_year: normalizedPayment.year,
-          security_code: normalizedPayment.cvv,
-          cardholder: {
-            name: normalizedPayment.cardName,
-            identification: {
-              type: 'CPF',
-              number: normalizedPayment.cpf,
+    let paymentToken = normalizedPayment.token;
+    let paymentMethodId = normalizedPayment.paymentMethodId;
+    let cardLast4: string | undefined;
+
+    if (!paymentToken) {
+      const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
+        '/v1/card_tokens',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            card_number: normalizedPayment.cardNumber,
+            expiration_month: normalizedPayment.month,
+            expiration_year: normalizedPayment.year,
+            security_code: normalizedPayment.cvv,
+            cardholder: {
+              name: normalizedPayment.cardName,
+              identification: {
+                type: 'CPF',
+                number: normalizedPayment.cpf,
+              },
             },
-          },
-        }),
-      }
-    );
+          }),
+        }
+      );
+      paymentToken = cardToken.id;
+      paymentMethodId = paymentMethodId || cardToken.payment_method_id || '';
+      cardLast4 = cardToken.last_four_digits;
+    }
+
+    if (!paymentToken) {
+      return NextResponse.json({ error: 'Token de pagamento não informado.' }, { status: 400 });
+    }
 
     // 1) Cobra o primeiro mês imediatamente para validar crédito/saldo de verdade.
     const firstPayment = await mercadoPagoRequest<any>('/v1/payments', {
@@ -128,15 +173,16 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         transaction_amount: selectedPlan.amount,
-        token: cardToken.id,
+        token: paymentToken,
         description: `FitAI Coach - Plano ${selectedPlan.name} (primeira cobrança)`,
-        installments: 1,
-        payment_method_id: cardToken.payment_method_id,
+        installments: normalizedPayment.installments || 1,
+        payment_method_id: paymentMethodId,
+        issuer_id: normalizedPayment.issuerId,
         payer: {
-          email: session.email,
+          email: normalizedPayment.payerEmail || session.email,
           identification: {
-            type: 'CPF',
-            number: normalizedPayment.cpf,
+            type: normalizedPayment.payerIdentificationType || 'CPF',
+            number: normalizedPayment.payerIdentificationNumber || normalizedPayment.cpf,
           },
         },
         external_reference: `${session.userId}|${selectedPlanId}|first_payment`,
@@ -164,7 +210,7 @@ export async function POST(req: NextRequest) {
         reason: `FitAI Coach - Plano ${selectedPlan.name}`,
         external_reference: `${session.userId}|${selectedPlanId}`,
         payer_email: session.email,
-        card_token_id: cardToken.id,
+        card_token_id: paymentToken,
         auto_recurring: {
           frequency: 1,
           frequency_type: 'months',
@@ -215,8 +261,8 @@ export async function POST(req: NextRequest) {
       first_payment_id: firstPayment?.id,
       first_payment_status: firstPayment?.status,
       payer_email: preapproval?.payer_email || session.email,
-      payment_method_id: cardToken.payment_method_id,
-      card_last4: cardToken.last_four_digits,
+      payment_method_id: paymentMethodId,
+      card_last4: cardLast4,
       subscription,
     });
   } catch (error) {
