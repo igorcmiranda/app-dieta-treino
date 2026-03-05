@@ -54,3 +54,17 @@ CREATE TABLE IF NOT EXISTS workout_progress (
   INDEX idx_workout_progress_user (user_id),
   CONSTRAINT fk_workout_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS payment_attempts (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id CHAR(36) NOT NULL,
+  plan VARCHAR(20) NOT NULL,
+  provider VARCHAR(30) NOT NULL,
+  payment_id VARCHAR(80) NULL,
+  status VARCHAR(40) NULL,
+  status_detail VARCHAR(120) NULL,
+  amount DECIMAL(10,2) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_payment_attempts_user_created (user_id, created_at),
+  CONSTRAINT fk_payment_attempts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

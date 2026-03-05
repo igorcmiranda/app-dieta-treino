@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSessionFromRequest } from '@/lib/server/auth';
-import { dbExecute, isMySqlConfigured } from '@/lib/server/mysql';
+import { dbExecute, dbQuery, isMySqlConfigured } from '@/lib/server/mysql';
 import { mercadoPagoRequest } from '@/lib/server/mercadopago';
 
 type PlanId = 'starter' | 'standard' | 'premium';
@@ -22,6 +22,18 @@ type PaymentInput = {
     email?: string;
     first_name?: string;
     last_name?: string;
+    phone?: {
+      area_code?: string;
+      number?: string;
+    };
+    address?: {
+      zip_code?: string;
+      street_name?: string;
+      street_number?: string | number;
+      neighborhood?: string;
+      city?: string;
+      federal_unit?: string;
+    };
     identification?: {
       type?: string;
       number?: string;
@@ -47,6 +59,14 @@ function normalizePaymentInput(input: PaymentInput) {
   const payerEmail = String(input?.payer?.email || '').trim();
   const payerFirstName = String(input?.payer?.first_name || '').trim();
   const payerLastName = String(input?.payer?.last_name || '').trim();
+  const payerPhoneAreaCode = sanitizeDigits(input?.payer?.phone?.area_code || '');
+  const payerPhoneNumber = sanitizeDigits(input?.payer?.phone?.number || '');
+  const payerZipCode = sanitizeDigits(input?.payer?.address?.zip_code || '');
+  const payerStreetName = String(input?.payer?.address?.street_name || '').trim();
+  const payerStreetNumberRaw = String(input?.payer?.address?.street_number || '').trim();
+  const payerNeighborhood = String(input?.payer?.address?.neighborhood || '').trim();
+  const payerCity = String(input?.payer?.address?.city || '').trim();
+  const payerFederalUnit = String(input?.payer?.address?.federal_unit || '').trim().toUpperCase();
   const payerIdType = String(input?.payer?.identification?.type || 'CPF').trim() || 'CPF';
   const payerIdNumber = sanitizeDigits(input?.payer?.identification?.number || '');
 
@@ -77,6 +97,14 @@ function normalizePaymentInput(input: PaymentInput) {
     payerEmail,
     payerFirstName,
     payerLastName,
+    payerPhoneAreaCode,
+    payerPhoneNumber,
+    payerZipCode,
+    payerStreetName,
+    payerStreetNumberRaw,
+    payerNeighborhood,
+    payerCity,
+    payerFederalUnit,
     payerIdType,
     payerIdNumber,
     installments,
@@ -88,6 +116,68 @@ function normalizePaymentInput(input: PaymentInput) {
     month: Number.isFinite(month) && month >= 1 && month <= 12 ? month : null,
     year: Number.isFinite(year) ? year : null,
   };
+}
+
+async function ensurePaymentAttemptsTable() {
+  if (!isMySqlConfigured) return;
+  await dbExecute(`
+    CREATE TABLE IF NOT EXISTS payment_attempts (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      user_id CHAR(36) NOT NULL,
+      plan VARCHAR(20) NOT NULL,
+      provider VARCHAR(30) NOT NULL,
+      payment_id VARCHAR(80) NULL,
+      status VARCHAR(40) NULL,
+      status_detail VARCHAR(120) NULL,
+      amount DECIMAL(10,2) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_payment_attempts_user_created (user_id, created_at)
+    )
+  `);
+}
+
+async function savePaymentAttempt(params: {
+  userId: string;
+  plan: PlanId;
+  paymentId?: string | number | null;
+  status?: string | null;
+  statusDetail?: string | null;
+  amount?: number | null;
+}) {
+  if (!isMySqlConfigured) return;
+  await ensurePaymentAttemptsTable();
+  await dbExecute(
+    `INSERT INTO payment_attempts (user_id, plan, provider, payment_id, status, status_detail, amount)
+     VALUES (?, ?, 'mercadopago', ?, ?, ?, ?)`,
+    [
+      params.userId,
+      params.plan,
+      params.paymentId ? String(params.paymentId) : null,
+      params.status || null,
+      params.statusDetail || null,
+      params.amount ?? null,
+    ]
+  );
+}
+
+async function getRecentAttempts(userId: string, limit = 5) {
+  if (!isMySqlConfigured) return [];
+  await ensurePaymentAttemptsTable();
+  const rows = await dbQuery<any[]>(
+    `SELECT payment_id, status, status_detail, amount, created_at
+     FROM payment_attempts
+     WHERE user_id = ?
+     ORDER BY created_at DESC
+     LIMIT ?`,
+    [userId, limit]
+  );
+  return rows.map((row) => ({
+    paymentId: row.payment_id,
+    status: row.status,
+    statusDetail: row.status_detail,
+    amount: row.amount,
+    createdAt: row.created_at,
+  }));
 }
 
 function buildLocalSubscription(plan: PlanId, providerSubscriptionId: string | null, providerStatus: string) {
@@ -170,6 +260,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CPF do pagador é obrigatório.' }, { status: 400 });
     }
 
+    const payerAddress =
+      normalized.payerZipCode || normalized.payerStreetName || normalized.payerStreetNumberRaw
+        ? {
+            ...(normalized.payerZipCode ? { zip_code: normalized.payerZipCode } : {}),
+            ...(normalized.payerStreetName ? { street_name: normalized.payerStreetName } : {}),
+            ...(normalized.payerStreetNumberRaw ? { street_number: Number(normalized.payerStreetNumberRaw) || normalized.payerStreetNumberRaw } : {}),
+            ...(normalized.payerNeighborhood ? { neighborhood: normalized.payerNeighborhood } : {}),
+            ...(normalized.payerCity ? { city: normalized.payerCity } : {}),
+            ...(normalized.payerFederalUnit ? { federal_unit: normalized.payerFederalUnit } : {}),
+          }
+        : undefined;
+
     // 1) Primeira cobrança imediata para validar saldo/crédito real
     const firstPayment = await mercadoPagoRequest<any>('/v1/payments', {
       method: 'POST',
@@ -190,6 +292,15 @@ export async function POST(req: NextRequest) {
           email: normalized.payerEmail || session.email,
           ...(normalized.payerFirstName ? { first_name: normalized.payerFirstName } : {}),
           ...(normalized.payerLastName ? { last_name: normalized.payerLastName } : {}),
+          ...(normalized.payerPhoneAreaCode || normalized.payerPhoneNumber
+            ? {
+                phone: {
+                  ...(normalized.payerPhoneAreaCode ? { area_code: normalized.payerPhoneAreaCode } : {}),
+                  ...(normalized.payerPhoneNumber ? { number: normalized.payerPhoneNumber } : {}),
+                },
+              }
+            : {}),
+          ...(payerAddress ? { address: payerAddress } : {}),
           identification: {
             type: normalized.payerIdType,
             number: payerIdNumber,
@@ -197,6 +308,19 @@ export async function POST(req: NextRequest) {
         },
         additional_info: {
           ...(ipAddress ? { ip_address: ipAddress } : {}),
+          payer: {
+            ...(normalized.payerFirstName ? { first_name: normalized.payerFirstName } : {}),
+            ...(normalized.payerLastName ? { last_name: normalized.payerLastName } : {}),
+            ...(normalized.payerPhoneAreaCode || normalized.payerPhoneNumber
+              ? {
+                  phone: {
+                    ...(normalized.payerPhoneAreaCode ? { area_code: normalized.payerPhoneAreaCode } : {}),
+                    ...(normalized.payerPhoneNumber ? { number: normalized.payerPhoneNumber } : {}),
+                  },
+                }
+              : {}),
+            ...(payerAddress ? { address: payerAddress } : {}),
+          },
           items: [
             {
               id: `fitai-${selectedPlanId}`,
@@ -219,7 +343,17 @@ export async function POST(req: NextRequest) {
     const firstPaymentStatusDetail = String(firstPayment?.status_detail || '').toLowerCase();
     const isFirstPaymentApproved = firstPaymentStatus === 'approved' && firstPaymentStatusDetail === 'accredited';
 
+    await savePaymentAttempt({
+      userId: session.userId,
+      plan: selectedPlanId,
+      paymentId: firstPayment?.id,
+      status: firstPayment?.status,
+      statusDetail: firstPayment?.status_detail,
+      amount: Number(firstPayment?.transaction_amount || selectedPlan.amount),
+    });
+
     if (!isFirstPaymentApproved) {
+      const recentAttempts = await getRecentAttempts(session.userId, 5);
       return NextResponse.json(
         {
           error: firstPayment?.status_detail || firstPayment?.status || 'Pagamento não aprovado pelo Mercado Pago.',
@@ -227,6 +361,7 @@ export async function POST(req: NextRequest) {
           providerStatusDetail: firstPayment?.status_detail,
           paymentId: firstPayment?.id,
           transactionAmount: firstPayment?.transaction_amount,
+          recentAttempts,
         },
         { status: 402 }
       );
@@ -259,6 +394,7 @@ export async function POST(req: NextRequest) {
           error: 'Assinatura não autorizada após pagamento aprovado.',
           providerStatus: preapproval?.status,
           id: preapproval?.id,
+          recentAttempts: await getRecentAttempts(session.userId, 5),
         },
         { status: 402 }
       );
@@ -292,7 +428,13 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id');
+    const includeAttempts = req.nextUrl.searchParams.get('attempts') === '1';
     if (!id) {
+      if (includeAttempts) {
+        const session = getSessionFromRequest(req);
+        if (!session) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+        return NextResponse.json({ attempts: await getRecentAttempts(session.userId, 20) });
+      }
       return NextResponse.json({
         plans: Object.entries(PLAN_CONFIG).map(([key, value]) => ({
           id: key,

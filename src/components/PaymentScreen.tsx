@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   ArrowLeft,
   Crown,
@@ -105,12 +107,48 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
   const [isBrickLoading, setIsBrickLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resolvedPublicKey, setResolvedPublicKey] = useState('');
-  const brickControllerRef = useRef<any>(null);
+  const [payerData, setPayerData] = useState({
+    fullName: '',
+    cpf: '',
+    phone: '',
+    zipCode: '',
+    street: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+  });
   const { currentUser } = useCurrentUser();
+  const brickControllerRef = useRef<any>(null);
+  const payerDataRef = useRef(payerData);
+  const currentUserRef = useRef(currentUser);
 
   const plan = planDetails[selectedPlan];
   const directPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
   const payerEmail = useMemo(() => currentUser?.email || '', [currentUser?.email]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setPayerData({
+      fullName: currentUser.name || '',
+      cpf: currentUser.cpf || '',
+      phone: currentUser.phone || '',
+      zipCode: currentUser.billing?.zipCode || '',
+      street: currentUser.billing?.street || '',
+      number: currentUser.billing?.number || '',
+      neighborhood: currentUser.billing?.neighborhood || '',
+      city: currentUser.billing?.city || '',
+      state: currentUser.billing?.state || '',
+    });
+  }, [currentUser]);
+
+  useEffect(() => {
+    payerDataRef.current = payerData;
+  }, [payerData]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
     let active = true;
@@ -196,6 +234,18 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
               setErrors({});
 
               try {
+                const cleanDigits = (value: string) => value.replace(/\D/g, '');
+                const latestPayerData = payerDataRef.current;
+                const latestUser = currentUserRef.current;
+                const fullName = latestPayerData.fullName.trim() || latestUser?.name || '';
+                const nameParts = fullName.split(' ').filter(Boolean);
+                const firstName = nameParts[0] || fullName;
+                const lastName = nameParts.slice(1).join(' ');
+                const phoneDigits = cleanDigits(latestPayerData.phone);
+                const areaCode = phoneDigits.length >= 10 ? phoneDigits.slice(0, 2) : '';
+                const phoneNumber = phoneDigits.length >= 10 ? phoneDigits.slice(2) : phoneDigits;
+                const cpfDigits = cleanDigits(latestPayerData.cpf || latestUser?.cpf || '');
+
                 const response = await fetch('/api/mercadopago/subscriptions', {
                   method: 'POST',
                   headers: {
@@ -207,6 +257,32 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                     paymentData: {
                       ...formData,
                       deviceId: window.MP_DEVICE_SESSION_ID || null,
+                      payer: {
+                        ...(formData?.payer || {}),
+                        email: payerEmail || formData?.payer?.email,
+                        first_name: firstName || formData?.payer?.first_name,
+                        last_name: lastName || formData?.payer?.last_name,
+                        identification: {
+                          type: 'CPF',
+                          number: cpfDigits || formData?.payer?.identification?.number,
+                        },
+                        ...(phoneNumber
+                          ? {
+                              phone: {
+                                ...(areaCode ? { area_code: areaCode } : {}),
+                                number: phoneNumber,
+                              },
+                            }
+                          : {}),
+                        address: {
+                          zip_code: cleanDigits(latestPayerData.zipCode),
+                          street_name: latestPayerData.street.trim(),
+                          street_number: latestPayerData.number.trim(),
+                          neighborhood: latestPayerData.neighborhood.trim(),
+                          city: latestPayerData.city.trim(),
+                          federal_unit: latestPayerData.state.trim().toUpperCase(),
+                        },
+                      },
                     },
                   }),
                 });
@@ -339,6 +415,100 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="payer-full-name">Nome do titular</Label>
+                  <Input
+                    id="payer-full-name"
+                    value={payerData.fullName}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, fullName: e.target.value }))}
+                    placeholder="Nome completo"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-cpf">CPF do titular</Label>
+                  <Input
+                    id="payer-cpf"
+                    value={payerData.cpf}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, cpf: e.target.value }))}
+                    placeholder="000.000.000-00"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-phone">Telefone</Label>
+                  <Input
+                    id="payer-phone"
+                    value={payerData.phone}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="(11) 99999-9999"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-zip">CEP</Label>
+                  <Input
+                    id="payer-zip"
+                    value={payerData.zipCode}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, zipCode: e.target.value }))}
+                    placeholder="00000-000"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="payer-street">Endereço</Label>
+                  <Input
+                    id="payer-street"
+                    value={payerData.street}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, street: e.target.value }))}
+                    placeholder="Rua/Avenida"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-number">Número</Label>
+                  <Input
+                    id="payer-number"
+                    value={payerData.number}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, number: e.target.value }))}
+                    placeholder="123"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-neighborhood">Bairro</Label>
+                  <Input
+                    id="payer-neighborhood"
+                    value={payerData.neighborhood}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                    placeholder="Bairro"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-city">Cidade</Label>
+                  <Input
+                    id="payer-city"
+                    value={payerData.city}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, city: e.target.value }))}
+                    placeholder="Cidade"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-state">UF</Label>
+                  <Input
+                    id="payer-state"
+                    value={payerData.state}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
+                    placeholder="SP"
+                    maxLength={2}
+                    disabled={isProcessing}
+                  />
+                </div>
+              </div>
+
               {isBrickLoading && (
                 <div className="flex items-center justify-center gap-2 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
