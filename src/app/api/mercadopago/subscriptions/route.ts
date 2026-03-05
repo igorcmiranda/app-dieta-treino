@@ -265,10 +265,9 @@ export async function POST(req: NextRequest) {
         ? {
             ...(normalized.payerZipCode ? { zip_code: normalized.payerZipCode } : {}),
             ...(normalized.payerStreetName ? { street_name: normalized.payerStreetName } : {}),
-            ...(normalized.payerStreetNumberRaw ? { street_number: Number(normalized.payerStreetNumberRaw) || normalized.payerStreetNumberRaw } : {}),
-            ...(normalized.payerNeighborhood ? { neighborhood: normalized.payerNeighborhood } : {}),
-            ...(normalized.payerCity ? { city: normalized.payerCity } : {}),
-            ...(normalized.payerFederalUnit ? { federal_unit: normalized.payerFederalUnit } : {}),
+            ...(normalized.payerStreetNumberRaw && Number.isFinite(Number(normalized.payerStreetNumberRaw))
+              ? { street_number: Number(normalized.payerStreetNumberRaw) }
+              : {}),
           }
         : undefined;
 
@@ -334,6 +333,9 @@ export async function POST(req: NextRequest) {
           app: 'fitai-coach',
           user_id: session.userId,
           plan: selectedPlanId,
+          payer_neighborhood: normalized.payerNeighborhood || undefined,
+          payer_city: normalized.payerCity || undefined,
+          payer_state: normalized.payerFederalUnit || undefined,
         },
         external_reference: `${session.userId}|${selectedPlanId}|first_payment`,
       }),

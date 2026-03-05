@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,6 +84,7 @@ export function UserDashboard() {
   const [showPayment, setShowPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'standard' | 'premium' | null>(null);
   const [subscriptionFeature, setSubscriptionFeature] = useState('');
+  const subscriptionSectionRef = useRef<HTMLDivElement | null>(null);
   
   // Estados do perfil
   const [profile, setProfile] = useState<Partial<UserProfile>>({
@@ -143,6 +144,14 @@ export function UserDashboard() {
       confirmNewPassword: '',
     }));
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!showSubscriptionPlans) return;
+    const timer = window.setTimeout(() => {
+      subscriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [showSubscriptionPlans]);
 
   // Carregar progresso do treino para a data selecionada
   useEffect(() => {
@@ -1746,10 +1755,12 @@ export function UserDashboard() {
 
       {/* Modais de Assinatura */}
       {showSubscriptionPlans && (
-        <SubscriptionRequired
-          feature={subscriptionFeature}
-          onSelectPlan={handlePlanSelection}
-        />
+        <div ref={subscriptionSectionRef}>
+          <SubscriptionRequired
+            feature={subscriptionFeature}
+            onSelectPlan={handlePlanSelection}
+          />
+        </div>
       )}
 
       {showPayment && selectedPlan && (

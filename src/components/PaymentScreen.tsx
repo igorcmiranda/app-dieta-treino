@@ -117,7 +117,10 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
     neighborhood: '',
     city: '',
     state: '',
+    complement: '',
   });
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [cepError, setCepError] = useState('');
   const { currentUser } = useCurrentUser();
   const brickControllerRef = useRef<any>(null);
   const payerDataRef = useRef(payerData);
@@ -139,12 +142,52 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
       neighborhood: currentUser.billing?.neighborhood || '',
       city: currentUser.billing?.city || '',
       state: currentUser.billing?.state || '',
+      complement: '',
     });
   }, [currentUser]);
 
   useEffect(() => {
     payerDataRef.current = payerData;
   }, [payerData]);
+
+  useEffect(() => {
+    const cepDigits = payerData.zipCode.replace(/\D/g, '');
+    if (cepDigits.length !== 8) {
+      setCepError('');
+      return;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        setIsLoadingCep(true);
+        setCepError('');
+        const response = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`, { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || data?.erro) {
+          throw new Error('CEP não encontrado.');
+        }
+        if (!active) return;
+        setPayerData((prev) => ({
+          ...prev,
+          street: data.logradouro || prev.street,
+          neighborhood: data.bairro || prev.neighborhood,
+          city: data.localidade || prev.city,
+          state: data.uf || prev.state,
+        }));
+      } catch (error) {
+        if (!active) return;
+        setCepError(error instanceof Error ? error.message : 'Erro ao buscar CEP.');
+      } finally {
+        if (active) setIsLoadingCep(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [payerData.zipCode]);
 
   useEffect(() => {
     currentUserRef.current = currentUser;
@@ -281,6 +324,7 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                           neighborhood: latestPayerData.neighborhood.trim(),
                           city: latestPayerData.city.trim(),
                           federal_unit: latestPayerData.state.trim().toUpperCase(),
+                          complement: latestPayerData.complement.trim(),
                         },
                       },
                     },
@@ -455,6 +499,8 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                     placeholder="00000-000"
                     disabled={isProcessing}
                   />
+                  {isLoadingCep && <p className="text-xs text-slate-500">Buscando CEP...</p>}
+                  {cepError && <p className="text-xs text-red-600">{cepError}</p>}
                 </div>
                 <div className="space-y-1 md:col-span-2">
                   <Label htmlFor="payer-street">Endereço</Label>
@@ -473,6 +519,16 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                     value={payerData.number}
                     onChange={(e) => setPayerData(prev => ({ ...prev, number: e.target.value }))}
                     placeholder="123"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-complement">Complemento</Label>
+                  <Input
+                    id="payer-complement"
+                    value={payerData.complement}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, complement: e.target.value }))}
+                    placeholder="Apto, bloco, referência"
                     disabled={isProcessing}
                   />
                 </div>
