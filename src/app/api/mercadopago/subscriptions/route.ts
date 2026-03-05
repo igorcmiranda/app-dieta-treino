@@ -13,6 +13,19 @@ const PLAN_CONFIG: Record<PlanId, { name: string; amount: number }> = {
 };
 
 type PaymentInput = {
+  token?: string;
+  payment_method_id?: string;
+  issuer_id?: string | number;
+  installments?: string | number;
+  payer?: {
+    email?: string;
+    identification?: {
+      type?: string;
+      number?: string;
+    };
+  };
+
+  // fallback legado
   cardNumber?: string;
   expiryDate?: string;
   cvv?: string;
@@ -21,24 +34,50 @@ type PaymentInput = {
 };
 
 function sanitizeDigits(value: string): string {
-  return value.replace(/\D/g, '');
+  return String(value || '').replace(/\D/g, '');
 }
 
 function normalizePaymentInput(input: PaymentInput) {
-  const cardNumber = sanitizeDigits(input.cardNumber || '');
-  const cvv = sanitizeDigits(input.cvv || '');
-  const cpf = sanitizeDigits(input.cpf || '');
-  const [rawMonth, rawYear] = String(input.expiryDate || '').split('/');
-  const month = sanitizeDigits(rawMonth || '');
-  const year = sanitizeDigits(rawYear || '');
+  const token = String(input?.token || '').trim();
+  const paymentMethodId = String(input?.payment_method_id || '').trim();
+  const payerEmail = String(input?.payer?.email || '').trim();
+  const payerIdType = String(input?.payer?.identification?.type || 'CPF').trim() || 'CPF';
+  const payerIdNumber = sanitizeDigits(input?.payer?.identification?.number || '');
+
+  const installmentsRaw = Number(input?.installments || 1);
+  const installments = Number.isFinite(installmentsRaw) && installmentsRaw > 0 ? Math.floor(installmentsRaw) : 1;
+
+  const issuerIdRaw = input?.issuer_id;
+  const issuerId = issuerIdRaw !== undefined && issuerIdRaw !== null && String(issuerIdRaw).trim() !== ''
+    ? Number(issuerIdRaw)
+    : undefined;
+
+  // fallback para cartão manual (se token não veio)
+  const cardNumber = sanitizeDigits(input?.cardNumber || '');
+  const cvv = sanitizeDigits(input?.cvv || '');
+  const cpf = sanitizeDigits(input?.cpf || payerIdNumber);
+  const cardName = String(input?.cardName || '').trim();
+
+  const expiryDigits = sanitizeDigits(input?.expiryDate || '');
+  const monthRaw = expiryDigits.slice(0, 2);
+  const yearRaw = expiryDigits.slice(2);
+  const month = Number(monthRaw);
+  const year = yearRaw.length >= 4 ? Number(yearRaw.slice(0, 4)) : yearRaw.length >= 2 ? 2000 + Number(yearRaw.slice(0, 2)) : NaN;
 
   return {
+    token,
+    paymentMethodId,
+    payerEmail,
+    payerIdType,
+    payerIdNumber,
+    installments,
+    issuerId: issuerId !== undefined && Number.isFinite(issuerId) ? issuerId : undefined,
     cardNumber,
     cvv,
     cpf,
-    cardName: String(input.cardName || '').trim(),
-    month,
-    year: year.length === 2 ? `20${year}` : year,
+    cardName,
+    month: Number.isFinite(month) && month >= 1 && month <= 12 ? month : null,
+    year: Number.isFinite(year) ? year : null,
   };
 }
 
@@ -65,9 +104,7 @@ function buildLocalSubscription(plan: PlanId, providerSubscriptionId: string | n
 export async function POST(req: NextRequest) {
   try {
     const session = getSessionFromRequest(req);
-    if (!session) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-    }
+    if (!session) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
     const { plan, paymentData } = await req.json();
     if (!plan || !PLAN_CONFIG[plan as PlanId]) {
@@ -76,29 +113,53 @@ export async function POST(req: NextRequest) {
 
     const selectedPlanId = plan as PlanId;
     const selectedPlan = PLAN_CONFIG[selectedPlanId];
-    const normalizedPayment = normalizePaymentInput(paymentData || {});
+    const normalized = normalizePaymentInput(paymentData || {});
 
-    const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; first_six_digits?: string; last_four_digits?: string }>(
-      '/v1/card_tokens',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          card_number: normalizedPayment.cardNumber,
-          expiration_month: normalizedPayment.month,
-          expiration_year: normalizedPayment.year,
-          security_code: normalizedPayment.cvv,
-          cardholder: {
-            name: normalizedPayment.cardName,
-            identification: {
-              type: 'CPF',
-              number: normalizedPayment.cpf,
-            },
-          },
-        }),
+    let token = normalized.token;
+    let paymentMethodId = normalized.paymentMethodId;
+    let cardLast4: string | undefined;
+
+    // Fallback legado: gera token com dados manuais se não veio token do Brick
+    if (!token) {
+      if (!normalized.cardNumber || !normalized.cvv || !normalized.cardName || !normalized.cpf || !normalized.month || !normalized.year) {
+        return NextResponse.json({ error: 'Dados do cartão incompletos.' }, { status: 400 });
       }
-    );
 
-    // 1) Cobra o primeiro mês imediatamente para validar crédito/saldo de verdade.
+      const cardToken = await mercadoPagoRequest<{ id: string; payment_method_id?: string; last_four_digits?: string }>(
+        '/v1/card_tokens',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            card_number: normalized.cardNumber,
+            expiration_month: normalized.month,
+            expiration_year: normalized.year,
+            security_code: normalized.cvv,
+            cardholder: {
+              name: normalized.cardName,
+              identification: {
+                type: 'CPF',
+                number: normalized.cpf,
+              },
+            },
+          }),
+        }
+      );
+
+      token = cardToken.id;
+      paymentMethodId = paymentMethodId || cardToken.payment_method_id || '';
+      cardLast4 = cardToken.last_four_digits;
+    }
+
+    if (!token || !paymentMethodId) {
+      return NextResponse.json({ error: 'Token de pagamento inválido.' }, { status: 400 });
+    }
+
+    const payerIdNumber = normalized.payerIdNumber || normalized.cpf;
+    if (!payerIdNumber) {
+      return NextResponse.json({ error: 'CPF do pagador é obrigatório.' }, { status: 400 });
+    }
+
+    // 1) Primeira cobrança imediata para validar saldo/crédito real
     const firstPayment = await mercadoPagoRequest<any>('/v1/payments', {
       method: 'POST',
       headers: {
@@ -106,15 +167,18 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         transaction_amount: selectedPlan.amount,
-        token: cardToken.id,
+        token,
         description: `FitAI Coach - Plano ${selectedPlan.name} (primeira cobrança)`,
-        installments: 1,
-        payment_method_id: cardToken.payment_method_id,
+        installments: normalized.installments,
+        payment_method_id: paymentMethodId,
+        issuer_id: normalized.issuerId,
+        binary_mode: true,
+        capture: true,
         payer: {
-          email: session.email,
+          email: normalized.payerEmail || session.email,
           identification: {
-            type: 'CPF',
-            number: normalizedPayment.cpf,
+            type: normalized.payerIdType,
+            number: payerIdNumber,
           },
         },
         external_reference: `${session.userId}|${selectedPlanId}|first_payment`,
@@ -122,27 +186,31 @@ export async function POST(req: NextRequest) {
     });
 
     const firstPaymentStatus = String(firstPayment?.status || '').toLowerCase();
-    if (firstPaymentStatus !== 'approved') {
+    const firstPaymentStatusDetail = String(firstPayment?.status_detail || '').toLowerCase();
+    const isFirstPaymentApproved = firstPaymentStatus === 'approved' && firstPaymentStatusDetail === 'accredited';
+
+    if (!isFirstPaymentApproved) {
       return NextResponse.json(
         {
-          error: firstPayment?.status_detail || 'Pagamento não aprovado pelo Mercado Pago.',
+          error: firstPayment?.status_detail || firstPayment?.status || 'Pagamento não aprovado pelo Mercado Pago.',
           providerStatus: firstPayment?.status,
           providerStatusDetail: firstPayment?.status_detail,
           paymentId: firstPayment?.id,
+          transactionAmount: firstPayment?.transaction_amount,
         },
         { status: 402 }
       );
     }
 
-    // 2) Se a cobrança foi aprovada, cria a assinatura recorrente mensal.
+    // 2) Com primeira cobrança aprovada, cria assinatura recorrente
     const backUrl = `${req.nextUrl.origin}/?subscription_checkout=mercadopago`;
     const preapproval = await mercadoPagoRequest<any>('/preapproval', {
       method: 'POST',
       body: JSON.stringify({
         reason: `FitAI Coach - Plano ${selectedPlan.name}`,
         external_reference: `${session.userId}|${selectedPlanId}`,
-        payer_email: session.email,
-        card_token_id: cardToken.id,
+        payer_email: normalized.payerEmail || session.email,
+        card_token_id: token,
         auto_recurring: {
           frequency: 1,
           frequency_type: 'months',
@@ -155,24 +223,10 @@ export async function POST(req: NextRequest) {
     });
 
     const preapprovalStatus = String(preapproval?.status || '').toLowerCase();
-    const isAuthorized = preapprovalStatus === 'authorized';
-
-    if (!isAuthorized) {
-      const initPoint = preapproval?.init_point || preapproval?.sandbox_init_point;
-      if (initPoint) {
-        return NextResponse.json({
-          success: false,
-          requiresAction: true,
-          id: preapproval?.id,
-          status: preapproval?.status,
-          init_point: preapproval?.init_point,
-          sandbox_init_point: preapproval?.sandbox_init_point,
-        });
-      }
-
+    if (preapprovalStatus !== 'authorized') {
       return NextResponse.json(
         {
-          error: 'Pagamento não autorizado pelo Mercado Pago.',
+          error: 'Assinatura não autorizada após pagamento aprovado.',
           providerStatus: preapproval?.status,
           id: preapproval?.id,
         },
@@ -192,9 +246,10 @@ export async function POST(req: NextRequest) {
       status: preapproval?.status,
       first_payment_id: firstPayment?.id,
       first_payment_status: firstPayment?.status,
+      first_payment_status_detail: firstPayment?.status_detail,
       payer_email: preapproval?.payer_email || session.email,
-      payment_method_id: cardToken.payment_method_id,
-      card_last4: cardToken.last_four_digits,
+      payment_method_id: paymentMethodId,
+      card_last4: cardLast4,
       subscription,
     });
   } catch (error) {
@@ -220,9 +275,7 @@ export async function GET(req: NextRequest) {
     }
 
     const session = getSessionFromRequest(req);
-    if (!session) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-    }
+    if (!session) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
     const result = await mercadoPagoRequest<any>(`/preapproval/${id}`, {
       method: 'GET',

@@ -1,0 +1,14 @@
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const publicKey =
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ||
+    process.env.MERCADOPAGO_PUBLIC_KEY ||
+    '';
+
+  if (!publicKey) {
+    return NextResponse.json({ error: 'Chave pública do Mercado Pago não configurada.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ publicKey });
+}

@@ -67,6 +67,17 @@ export function UserDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzingDiet, setIsAnalyzingDiet] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showAccountDialog, setShowAccountDialog] = useState(false);
+  const [accountData, setAccountData] = useState({
+    name: '',
+    email: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+  });
+  const [accountError, setAccountError] = useState('');
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
   
   // Estados para sistema de assinatura
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
@@ -121,6 +132,18 @@ export function UserDashboard() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    setAccountData(prev => ({
+      ...prev,
+      name: currentUser.name || '',
+      email: currentUser.email || '',
+      currentPassword: '',
+      newPassword: '',
+      confirmNewPassword: '',
+    }));
+  }, [currentUser]);
+
   // Carregar progresso do treino para a data selecionada
   useEffect(() => {
     if (currentUser && selectedDate && selectedWorkoutDay) {
@@ -143,6 +166,139 @@ export function UserDashboard() {
       updateCurrentUser(updatedUser);
       updateUser(currentUser.id, updatedUser);
       setActiveTab('dashboard');
+    }
+  };
+
+  const handleSaveAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    setAccountError('');
+    setIsSavingAccount(true);
+
+    try {
+      const trimmedName = accountData.name.trim();
+      const trimmedEmail = accountData.email.trim().toLowerCase();
+
+      if (!trimmedName || !trimmedEmail) {
+        throw new Error('Nome e email são obrigatórios.');
+      }
+
+      const updateResponse = await fetch(`/api/users/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: trimmedName,
+          email: trimmedEmail,
+        }),
+      });
+
+      const updatePayload = await updateResponse.json();
+      if (!updateResponse.ok) {
+        throw new Error(updatePayload?.error || 'Não foi possível atualizar nome e email.');
+      }
+
+      if (accountData.newPassword || accountData.currentPassword || accountData.confirmNewPassword) {
+        if (!accountData.currentPassword) {
+          throw new Error('Informe a senha atual para alterar a senha.');
+        }
+        if (!accountData.newPassword) {
+          throw new Error('Informe a nova senha.');
+        }
+        if (accountData.newPassword.length < 6) {
+          throw new Error('A nova senha deve ter no mínimo 6 caracteres.');
+        }
+        if (accountData.newPassword !== accountData.confirmNewPassword) {
+          throw new Error('A confirmação da nova senha não confere.');
+        }
+
+        const changePasswordResponse = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            currentPassword: accountData.currentPassword,
+            newPassword: accountData.newPassword,
+          }),
+        });
+
+        const changePasswordPayload = await changePasswordResponse.json();
+        if (!changePasswordResponse.ok) {
+          throw new Error(changePasswordPayload?.error || 'Não foi possível alterar a senha.');
+        }
+      }
+
+      const updatedUser = {
+        ...currentUser,
+        name: trimmedName,
+        email: trimmedEmail,
+      };
+      updateCurrentUser(updatedUser);
+      updateUser(currentUser.id, updatedUser);
+
+      setAccountData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmNewPassword: '',
+      }));
+      setShowAccountDialog(false);
+      alert('✅ Dados da conta atualizados com sucesso.');
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : 'Erro ao atualizar conta.');
+    } finally {
+      setIsSavingAccount(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!currentUser?.subscription) return;
+
+    const confirmed = window.confirm('Tem certeza que deseja cancelar sua assinatura mensal?');
+    if (!confirmed) return;
+
+    setAccountError('');
+    setIsCancellingSubscription(true);
+
+    try {
+      const response = await fetch('/api/subscriptions/cancel', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Não foi possível cancelar a assinatura.');
+      }
+
+      const updatedSubscription = payload.subscription
+        ? {
+            ...payload.subscription,
+            startDate: new Date(payload.subscription.startDate),
+            endDate: new Date(payload.subscription.endDate),
+            downgradableDate: payload.subscription.downgradableDate
+              ? new Date(payload.subscription.downgradableDate)
+              : undefined,
+          }
+        : {
+            ...currentUser.subscription,
+            status: 'cancelled' as const,
+            endDate: new Date(),
+          };
+
+      const updatedUser = {
+        ...currentUser,
+        subscription: updatedSubscription,
+      };
+      updateCurrentUser(updatedUser);
+      updateUser(currentUser.id, updatedUser);
+
+      alert('✅ Assinatura cancelada com sucesso.');
+      setShowAccountDialog(false);
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : 'Erro ao cancelar assinatura.');
+    } finally {
+      setIsCancellingSubscription(false);
     }
   };
 
@@ -612,9 +768,118 @@ export function UserDashboard() {
         {/* Header - Responsivo */}
         <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 p-4 sm:p-6 rounded-xl border ${headerTheme.container}`}>
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${headerTheme.icon} rounded-full flex items-center justify-center`}>
-              <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
+            <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${headerTheme.icon} rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400`}
+                  title="Editar conta"
+                >
+                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Minha conta</DialogTitle>
+                </DialogHeader>
+
+                <form onSubmit={handleSaveAccount} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="account-name">Nome</Label>
+                    <Input
+                      id="account-name"
+                      value={accountData.name}
+                      onChange={(e) => setAccountData(prev => ({ ...prev, name: e.target.value }))}
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="account-email">Email</Label>
+                    <Input
+                      id="account-email"
+                      type="email"
+                      value={accountData.email}
+                      onChange={(e) => setAccountData(prev => ({ ...prev, email: e.target.value }))}
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Senha atual</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      value={accountData.currentPassword}
+                      onChange={(e) => setAccountData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      placeholder="Preencha para trocar a senha"
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nova senha</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={accountData.newPassword}
+                      onChange={(e) => setAccountData(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Mínimo 6 caracteres"
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-new-password">Confirmar nova senha</Label>
+                    <Input
+                      id="confirm-new-password"
+                      type="password"
+                      value={accountData.confirmNewPassword}
+                      onChange={(e) => setAccountData(prev => ({ ...prev, confirmNewPassword: e.target.value }))}
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    />
+                  </div>
+
+                  {accountError && (
+                    <div className="text-sm text-red-600 bg-red-50 rounded-md p-2">
+                      {accountError}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowAccountDialog(false)}
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    >
+                      Fechar
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    >
+                      {isSavingAccount ? 'Salvando...' : 'Salvar dados'}
+                    </Button>
+                  </div>
+                </form>
+
+                {currentUser.subscription?.status === 'active' && (
+                  <div className="mt-2 border-t pt-4">
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={handleCancelSubscription}
+                      disabled={isSavingAccount || isCancellingSubscription}
+                    >
+                      {isCancellingSubscription ? 'Cancelando assinatura...' : 'Cancelar assinatura mensal'}
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 Olá, {currentUser.name}!
