@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       cardLast4 = cardToken.last_four_digits;
     }
 
-    if (!token || !paymentMethodId) {
+    if (!token) {
       return NextResponse.json({ error: 'Token de pagamento inválido.' }, { status: 400 });
     }
 
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
         token,
         description: `FitAI Coach - Plano ${selectedPlan.name} (primeira cobrança)`,
         installments: normalized.installments,
-        payment_method_id: paymentMethodId,
+        ...(paymentMethodId ? { payment_method_id: paymentMethodId } : {}),
         issuer_id: normalized.issuerId,
         binary_mode: true,
         capture: true,
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
       first_payment_status: firstPayment?.status,
       first_payment_status_detail: firstPayment?.status_detail,
       payer_email: preapproval?.payer_email || session.email,
-      payment_method_id: paymentMethodId,
+      payment_method_id: paymentMethodId || null,
       card_last4: cardLast4,
       subscription,
     });

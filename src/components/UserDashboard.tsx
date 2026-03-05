@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCurrentUser, useUsers, useDietPlans, useWorkoutPlans, useBodyAnalyses, useWorkoutProgress } from '@/lib/hooks';
 import { UserProfile, FoodEntry, WorkoutProgress, MealEntry, UserSubscription } from '@/lib/types';
@@ -769,15 +769,14 @@ export function UserDashboard() {
         <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 p-4 sm:p-6 rounded-xl border ${headerTheme.container}`}>
           <div className="flex items-center gap-3">
             <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
-              <DialogTrigger asChild>
-                <button
-                  type="button"
-                  className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${headerTheme.icon} rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400`}
-                  title="Editar conta"
-                >
-                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </button>
-              </DialogTrigger>
+              <button
+                type="button"
+                onClick={() => setShowAccountDialog(true)}
+                className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r ${headerTheme.icon} rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400`}
+                title="Editar conta"
+              >
+                <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </button>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Minha conta</DialogTitle>
@@ -885,6 +884,13 @@ export function UserDashboard() {
                 Olá, {currentUser.name}!
               </h1>
               <p className="text-sm sm:text-base text-gray-600">Bem-vindo ao seu dashboard</p>
+              <button
+                type="button"
+                onClick={() => setShowAccountDialog(true)}
+                className="text-xs sm:text-sm text-blue-700 hover:text-blue-900 underline mt-1"
+              >
+                Minha conta
+              </button>
               <p className={`text-xs sm:text-sm font-semibold mt-1 ${headerTheme.text}`}>
                 Plano: {planDisplayName}
               </p>
