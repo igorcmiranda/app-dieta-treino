@@ -17,8 +17,11 @@ type PaymentInput = {
   payment_method_id?: string;
   issuer_id?: string | number;
   installments?: string | number;
+  deviceId?: string | null;
   payer?: {
     email?: string;
+    first_name?: string;
+    last_name?: string;
     identification?: {
       type?: string;
       number?: string;
@@ -40,7 +43,10 @@ function sanitizeDigits(value: string): string {
 function normalizePaymentInput(input: PaymentInput) {
   const token = String(input?.token || '').trim();
   const paymentMethodId = String(input?.payment_method_id || '').trim();
+  const deviceId = String(input?.deviceId || '').trim();
   const payerEmail = String(input?.payer?.email || '').trim();
+  const payerFirstName = String(input?.payer?.first_name || '').trim();
+  const payerLastName = String(input?.payer?.last_name || '').trim();
   const payerIdType = String(input?.payer?.identification?.type || 'CPF').trim() || 'CPF';
   const payerIdNumber = sanitizeDigits(input?.payer?.identification?.number || '');
 
@@ -67,7 +73,10 @@ function normalizePaymentInput(input: PaymentInput) {
   return {
     token,
     paymentMethodId,
+    deviceId,
     payerEmail,
+    payerFirstName,
+    payerLastName,
     payerIdType,
     payerIdNumber,
     installments,
@@ -114,6 +123,8 @@ export async function POST(req: NextRequest) {
     const selectedPlanId = plan as PlanId;
     const selectedPlan = PLAN_CONFIG[selectedPlanId];
     const normalized = normalizePaymentInput(paymentData || {});
+    const forwardedFor = req.headers.get('x-forwarded-for') || '';
+    const ipAddress = forwardedFor.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined;
 
     let token = normalized.token;
     let paymentMethodId = normalized.paymentMethodId;
@@ -164,6 +175,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'X-Idempotency-Key': randomUUID(),
+        ...(normalized.deviceId ? { 'X-meli-session-id': normalized.deviceId } : {}),
       },
       body: JSON.stringify({
         transaction_amount: selectedPlan.amount,
@@ -176,10 +188,28 @@ export async function POST(req: NextRequest) {
         capture: true,
         payer: {
           email: normalized.payerEmail || session.email,
+          ...(normalized.payerFirstName ? { first_name: normalized.payerFirstName } : {}),
+          ...(normalized.payerLastName ? { last_name: normalized.payerLastName } : {}),
           identification: {
             type: normalized.payerIdType,
             number: payerIdNumber,
           },
+        },
+        additional_info: {
+          ...(ipAddress ? { ip_address: ipAddress } : {}),
+          items: [
+            {
+              id: `fitai-${selectedPlanId}`,
+              title: `FitAI Coach - Plano ${selectedPlan.name}`,
+              quantity: 1,
+              unit_price: selectedPlan.amount,
+            },
+          ],
+        },
+        metadata: {
+          app: 'fitai-coach',
+          user_id: session.userId,
+          plan: selectedPlanId,
         },
         external_reference: `${session.userId}|${selectedPlanId}|first_payment`,
       }),

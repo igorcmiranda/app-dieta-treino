@@ -25,6 +25,7 @@ interface PaymentScreenProps {
 declare global {
   interface Window {
     MercadoPago?: any;
+    MP_DEVICE_SESSION_ID?: string;
   }
 }
 
@@ -71,6 +72,30 @@ function loadMercadoPagoSdk(): Promise<void> {
     script.setAttribute('data-mp-sdk', 'v2');
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Falha ao carregar SDK do Mercado Pago.'));
+    document.head.appendChild(script);
+  });
+}
+
+function loadMercadoPagoSecuritySdk(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (window.MP_DEVICE_SESSION_ID) return Promise.resolve();
+
+  const existingScript = document.querySelector<HTMLScriptElement>('script[data-mp-security-sdk="v2"]');
+  if (existingScript) {
+    return new Promise((resolve, reject) => {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Falha ao carregar SDK de segurança do Mercado Pago.')), { once: true });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://www.mercadopago.com/v2/security.js';
+    script.async = true;
+    script.defer = true;
+    script.setAttribute('data-mp-security-sdk', 'v2');
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Falha ao carregar SDK de segurança do Mercado Pago.'));
     document.head.appendChild(script);
   });
 }
@@ -135,6 +160,7 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
         setIsBrickLoading(true);
 
         await loadMercadoPagoSdk();
+        await loadMercadoPagoSecuritySdk();
         if (cancelled) return;
 
         if (!window.MercadoPago) {
@@ -178,7 +204,10 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                   credentials: 'include',
                   body: JSON.stringify({
                     plan: selectedPlan,
-                    paymentData: formData,
+                    paymentData: {
+                      ...formData,
+                      deviceId: window.MP_DEVICE_SESSION_ID || null,
+                    },
                   }),
                 });
 
