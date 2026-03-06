@@ -195,6 +195,39 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
+
+  // Reduz chance de HTML antigo apontar para chunks novos após deploy
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/:path((?!_next/static|_next/image|favicon.ico|manifest.json|icon.svg).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        ],
+      },
+    ];
+  },
+
+  async rewrites() {
+    return [
+      {
+        source: '/favicon.ico',
+        destination: '/icon.svg',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
