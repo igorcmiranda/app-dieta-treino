@@ -20,7 +20,7 @@ import { canAccessAI, hasActiveSubscription } from '@/lib/subscription-utils';
 import { SubscriptionRequired } from './SubscriptionRequired';
 import { SubscriptionPlans } from './SubscriptionPlans';
 import { PaymentScreen } from './PaymentScreen';
-import { 
+import {
   User, 
   LogOut, 
   Camera, 
@@ -48,6 +48,8 @@ import {
   Save,
   AlertCircle
 } from 'lucide-react';
+
+const SITE_VERSION = 5;
 
 export function UserDashboard() {
   const { currentUser, logout, updateCurrentUser } = useCurrentUser();
@@ -889,9 +891,14 @@ export function UserDashboard() {
               </DialogContent>
             </Dialog>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                Olá, {currentUser.name}!
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Olá, {currentUser.name}!
+                </h1>
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">
+                  Versão {SITE_VERSION}
+                </span>
+              </div>
               <p className="text-sm sm:text-base text-gray-600">Bem-vindo ao seu dashboard</p>
               <button
                 type="button"
