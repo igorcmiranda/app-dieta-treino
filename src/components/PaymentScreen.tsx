@@ -53,7 +53,7 @@ const planDetails = {
 };
 
 const BRICK_CONTAINER_ID = 'mp-card-payment-brick-container';
-const CHECKOUT_UI_VERSION = 3;
+const CHECKOUT_UI_VERSION = 4;
 
 function loadMercadoPagoSdk(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve();
@@ -599,6 +599,10 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                   Carregando checkout seguro...
                 </div>
               )}
+
+              <div className="text-center text-sm font-bold text-blue-700 dark:text-blue-300">
+                Versao: {CHECKOUT_UI_VERSION}
+              </div>
 
               <div id={BRICK_CONTAINER_ID} className={isProcessing ? 'pointer-events-none opacity-70' : ''} />
 
