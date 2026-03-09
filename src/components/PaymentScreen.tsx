@@ -109,6 +109,7 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
   const [resolvedPublicKey, setResolvedPublicKey] = useState('');
   const [payerData, setPayerData] = useState({
     fullName: '',
+    email: '',
     cpf: '',
     phone: '',
     zipCode: '',
@@ -128,12 +129,17 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
 
   const plan = planDetails[selectedPlan];
   const directPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
-  const payerEmail = useMemo(() => currentUser?.email || '', [currentUser?.email]);
+  const payerEmail = useMemo(() => {
+    const email = payerData.email.trim();
+    if (email) return email;
+    return currentUser?.email || '';
+  }, [payerData.email, currentUser?.email]);
 
   useEffect(() => {
     if (!currentUser) return;
     setPayerData({
       fullName: currentUser.name || '',
+      email: currentUser.email || '',
       cpf: currentUser.cpf || '',
       phone: currentUser.phone || '',
       zipCode: currentUser.billing?.zipCode || '',
@@ -255,14 +261,16 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
 
         const mp = new window.MercadoPago(resolvedPublicKey, { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
+        const initialization: Record<string, any> = {
+          amount: plan.price,
+        };
+
+        if (payerEmail) {
+          initialization.payer = { email: payerEmail };
+        }
 
         const controller = await bricksBuilder.create('cardPayment', BRICK_CONTAINER_ID, {
-          initialization: {
-            amount: plan.price,
-            payer: {
-              email: payerEmail,
-            },
-          },
+          initialization,
           customization: {
             paymentMethods: {
               maxInstallments: 1,
@@ -362,7 +370,12 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
               }
             },
             onError: (error: any) => {
-              const message = error?.message || error?.cause?.[0]?.description || 'Erro no checkout do Mercado Pago.';
+              const providerDetail =
+                error?.cause?.[0]?.description ||
+                error?.cause?.[0]?.code ||
+                error?.error ||
+                error?.message;
+              const message = providerDetail || 'Erro no checkout do Mercado Pago.';
               setErrors({ general: message });
               setIsBrickLoading(false);
             },
@@ -549,6 +562,17 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                     value={payerData.city}
                     onChange={(e) => setPayerData(prev => ({ ...prev, city: e.target.value }))}
                     placeholder="Cidade"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="payer-email">E-mail do titular</Label>
+                  <Input
+                    id="payer-email"
+                    type="email"
+                    value={payerData.email}
+                    onChange={(e) => setPayerData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="email@dominio.com"
                     disabled={isProcessing}
                   />
                 </div>
