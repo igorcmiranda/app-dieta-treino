@@ -53,7 +53,7 @@ const planDetails = {
 };
 
 const BRICK_CONTAINER_ID = 'mp-card-payment-brick-container';
-const CHECKOUT_UI_VERSION = 2;
+const CHECKOUT_UI_VERSION = 3;
 
 function loadMercadoPagoSdk(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve();
@@ -467,6 +467,9 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
 
           <Card className="shadow-xl border-blue-100 dark:border-blue-800">
             <CardHeader>
+              <div className="mb-2 inline-flex w-fit items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                Versão {CHECKOUT_UI_VERSION}
+              </div>
               <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
                 <CreditCard className="w-5 h-5" />
                 Pagamento com Mercado Pago
@@ -605,7 +608,7 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                 </div>
               )}
 
-              <div className="text-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <div className="text-center text-xs font-bold text-amber-700 dark:text-amber-300">
                 Versão {CHECKOUT_UI_VERSION}
               </div>
 
