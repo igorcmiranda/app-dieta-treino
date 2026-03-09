@@ -53,6 +53,7 @@ const planDetails = {
 };
 
 const BRICK_CONTAINER_ID = 'mp-card-payment-brick-container';
+const CHECKOUT_UI_VERSION = 2;
 
 function loadMercadoPagoSdk(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve();
@@ -603,6 +604,10 @@ export function PaymentScreen({ selectedPlan, onBack, onPaymentSuccess }: Paymen
                   {errors.general}
                 </div>
               )}
+
+              <div className="text-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Versão {CHECKOUT_UI_VERSION}
+              </div>
 
               <div className="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
